@@ -80,3 +80,5 @@ npx expo start --android
   npx expo start -c
   ```
 - **npm non reconnu** : installe Node.js depuis https://nodejs.org
+
+_Mise a jour technique: 2026-02-24 02:26:27_
