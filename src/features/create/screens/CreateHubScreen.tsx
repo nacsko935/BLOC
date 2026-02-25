@@ -1,58 +1,96 @@
 import React, { useState } from "react";
-import { ScrollView, View, Pressable } from "react-native";
+import { Alert, ScrollView, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
 import Screen from "../../../core/ui/Screen";
 import { AppHeader } from "../../../core/ui/AppHeader";
 import { AppText } from "../../../core/ui/AppText";
+import { AppButton } from "../../../core/ui/AppButton";
 import Card from "../../../core/ui/Card";
-
-const actions = [
-  { title: "Importer fichier", subtitle: "PDF / DOC", route: "/create/import", icon: "??" },
-  { title: "Import audio", subtitle: "Memo vocal", route: "/create/audio", icon: "??" },
-  { title: "Creer QCM", subtitle: "Questions + corrections", route: "/create/qcm", icon: "??" },
-  { title: "Creer Flashcards", subtitle: "Memo active", route: "/create/flashcards", icon: "??" },
-];
+import { useAuthStore } from "../../../../state/useAuthStore";
+import { useFeedStore } from "../../../../state/useFeedStore";
 
 export default function CreateHubScreen() {
   const router = useRouter();
-  const [recent] = useState([
-    { id: "1", title: "QCM Reseaux", date: "Aujourd'hui" },
-    { id: "2", title: "Fiche BDD", date: "Hier" },
-  ]);
+  const { profile } = useAuthStore();
+  const { createPost } = useFeedStore();
+
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [filiere, setFiliere] = useState(profile?.filiere || "");
+  const [loading, setLoading] = useState(false);
+
+  const submit = async () => {
+    if (!content.trim() || !filiere.trim()) {
+      Alert.alert("Champs requis", "Le contenu et la filiere sont obligatoires.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await createPost({ title: title.trim() || undefined, content, filiere, type: "text" });
+      setTitle("");
+      setContent("");
+      router.back();
+    } catch (error: any) {
+      Alert.alert("Erreur", error?.message || "Impossible de publier le post.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <Screen>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 14 }}>
-        <AppHeader title="Creer" subtitle="Zero friction, generation rapide" />
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 14, paddingBottom: 32 }}>
+        <AppHeader title="Nouvelle publication" subtitle="Publie dans ton feed" />
 
-        <View style={{ gap: 10 }}>
-          {actions.map((a) => (
-            <Pressable key={a.title} onPress={() => router.push(a.route as any)}>
-              <Card>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-                  <AppText style={{ fontSize: 28 }}>{a.icon}</AppText>
-                  <View style={{ flex: 1 }}>
-                    <AppText style={{ fontWeight: "800" }}>{a.title}</AppText>
-                    <AppText muted variant="caption" style={{ marginTop: 4 }}>{a.subtitle}</AppText>
-                  </View>
-                  <AppText>{">"}</AppText>
-                </View>
-              </Card>
-            </Pressable>
-          ))}
-        </View>
+        <Card>
+          <View style={{ gap: 12 }}>
+            <View>
+              <AppText variant="caption" muted>Titre (optionnel)</AppText>
+              <TextInput
+                value={title}
+                onChangeText={setTitle}
+                placeholder="Ex: Fiche SQL compacte"
+                placeholderTextColor="#8D8D96"
+                style={{ color: "white", borderBottomColor: "#2C2C35", borderBottomWidth: 1, paddingVertical: 8 }}
+              />
+            </View>
 
-        <View>
-          <AppText variant="subtitle" style={{ marginBottom: 8 }}>Recents</AppText>
-          <View style={{ gap: 8 }}>
-            {recent.map((r) => (
-              <Card key={r.id}>
-                <AppText>{r.title}</AppText>
-                <AppText muted variant="caption" style={{ marginTop: 4 }}>{r.date}</AppText>
-              </Card>
-            ))}
+            <View>
+              <AppText variant="caption" muted>Filiere</AppText>
+              <TextInput
+                value={filiere}
+                onChangeText={setFiliere}
+                placeholder="Ex: Informatique"
+                placeholderTextColor="#8D8D96"
+                style={{ color: "white", borderBottomColor: "#2C2C35", borderBottomWidth: 1, paddingVertical: 8 }}
+              />
+            </View>
+
+            <View>
+              <AppText variant="caption" muted>Contenu</AppText>
+              <TextInput
+                value={content}
+                onChangeText={setContent}
+                placeholder="Partage un conseil, une ressource ou une question..."
+                placeholderTextColor="#8D8D96"
+                multiline
+                style={{
+                  color: "white",
+                  borderColor: "#2C2C35",
+                  borderWidth: 1,
+                  borderRadius: 10,
+                  minHeight: 120,
+                  textAlignVertical: "top",
+                  padding: 10,
+                  marginTop: 6,
+                }}
+              />
+            </View>
+
+            <AppButton onPress={submit} disabled={loading}>{loading ? "Publication..." : "Publier"}</AppButton>
           </View>
-        </View>
+        </Card>
       </ScrollView>
     </Screen>
   );

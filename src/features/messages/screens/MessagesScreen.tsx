@@ -141,7 +141,7 @@ export default function MessagesScreen() {
           <FlashList
             data={filteredConversations}
             keyExtractor={(item) => item.id}
-            renderItem={({ item }) => <ConversationRow item={item} onPress={(id) => router.push(`/message/${id}`)} />}
+            renderItem={({ item }) => <ConversationRow item={item} onPress={(id) => router.push({ pathname: "/messages/[id]", params: { id } })} />}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.listContent}
             ListEmptyComponent={<EmptyState title="Aucune conversation" description="Commence une conversation pour discuter." />}

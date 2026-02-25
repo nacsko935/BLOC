@@ -82,3 +82,18 @@ npx expo start --android
 - **npm non reconnu** : installe Node.js depuis https://nodejs.org
 
 _Mise a jour technique: 2026-02-24 02:26:27_
+
+### Cache navigation / Tabs
+Si l'ordre ou les labels des onglets ne reflètent pas le code, vide le cache Expo/Metro:
+
+```bash
+npx expo start -c
+```
+
+Si nécessaire (Windows PowerShell):
+
+```powershell
+Remove-Item -Recurse -Force .expo
+Remove-Item -Recurse -Force node_modules/.cache
+npx expo start -c
+```

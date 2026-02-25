@@ -24,9 +24,9 @@ export default function RootLayout() {
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="onboarding" options={{ headerShown: false }} />
             <Stack.Screen name="create" options={{ headerShown: false }} />
-            <Stack.Screen name="messages" options={{ headerShown: false }} />
             <Stack.Screen name="progress" options={{ headerShown: false }} />
             <Stack.Screen name="library" options={{ headerShown: false }} />
+            <Stack.Screen name="settings" options={{ headerShown: false }} />
 
             <Stack.Screen name="(modals)/create" options={{ presentation: "transparentModal", headerShown: false }} />
             <Stack.Screen name="(modals)/create-new" options={{ presentation: "modal", headerShown: false }} />
@@ -52,7 +52,6 @@ export default function RootLayout() {
             <Stack.Screen name="task/[id]" options={{ title: "Tâche" }} />
             <Stack.Screen name="qcm/[id]" options={{ title: "QCM" }} />
             <Stack.Screen name="course/[id]" options={{ title: "Cours", headerShown: false }} />
-            <Stack.Screen name="message/[id]" options={{ title: "Message", headerShown: false }} />
               </Stack>
             </ConversationsProvider>
           </QueryClientProvider>

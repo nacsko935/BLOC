@@ -3,12 +3,12 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "rea
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { theme } from "../../src/core/ui/theme";
-import { signIn } from "../../src/features/auth/authRepo";
 import { AppText } from "../../src/core/ui/AppText";
 import { AppInput } from "../../src/core/ui/AppInput";
 import { AppButton } from "../../src/core/ui/AppButton";
 import { AppBadge } from "../../src/core/ui/AppBadge";
 import { Toast } from "../../src/core/ui/Toast";
+import { useAuthStore } from "../../state/useAuthStore";
 
 type Errors = {
   email?: string;
@@ -17,6 +17,7 @@ type Errors = {
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { signIn } = useAuthStore();
   const { accountType } = useLocalSearchParams<{ accountType?: "student" | "professor" | "school" }>();
 
   const [email, setEmail] = useState("");
@@ -48,13 +49,8 @@ export default function LoginScreen() {
 
     setLoading(true);
     try {
-      const user = await signIn(email.trim().toLowerCase(), password);
-      if (user) {
-        router.replace("/(tabs)/home");
-      } else {
-        setToast("Email ou mot de passe incorrect.");
-        setTimeout(() => setToast(""), 1800);
-      }
+      await signIn(email.trim().toLowerCase(), password);
+      router.replace("/(tabs)/home");
     } catch (error: any) {
       setToast(error?.message || "Impossible de se connecter.");
       setTimeout(() => setToast(""), 1800);
@@ -111,12 +107,6 @@ export default function LoginScreen() {
               autoCapitalize="none"
               error={errors.password}
             />
-
-            <View style={{ alignSelf: "flex-end" }}>
-              <Pressable>
-                <AppText variant="caption" style={{ color: theme.colors.accent }}>Mot de passe oublie ?</AppText>
-              </Pressable>
-            </View>
 
             <AppButton onPress={handleLogin} disabled={loading}>
               {loading ? "Connexion..." : "Se connecter"}

@@ -1,67 +1,38 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Tabs, usePathname, useRouter } from "expo-router";
-import { Animated, Platform, Text, View } from "react-native";
+import { useCallback, useEffect, useState } from "react";
+import { Tabs, useRouter } from "expo-router";
+import { Platform, Pressable, View } from "react-native";
 import { BlurView } from "expo-blur";
-import { getSessionUser } from "../../src/features/auth/authRepo";
-import TabIcon from "../../src/core/ui/TabIcon";
-import { isOnboardingComplete } from "../../src/features/profile/services/onboardingService";
-import { FloatingCreateButton } from "../../src/components/FloatingCreateButton";
-import { CreateSheet } from "../../src/components/CreateSheet";
-
-type EmojiIconProps = {
-  glyph: string;
-  focused: boolean;
-};
-
-function EmojiIcon({ glyph, focused }: EmojiIconProps) {
-  const scale = useRef(new Animated.Value(focused ? 1 : 0.92)).current;
-
-  useEffect(() => {
-    Animated.spring(scale, {
-      toValue: focused ? 1 : 0.92,
-      useNativeDriver: true,
-      tension: 260,
-      friction: 18,
-    }).start();
-  }, [focused, scale]);
-
-  return (
-    <Animated.View
-      style={{
-        width: 30,
-        height: 30,
-        alignItems: "center",
-        justifyContent: "center",
-        transform: [{ scale }],
-        opacity: focused ? 1 : 0.78,
-      }}
-    >
-      <Text style={{ fontSize: focused ? 22 : 20 }}>{glyph}</Text>
-    </Animated.View>
-  );
-}
+import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { CreateBottomSheet, CreateActionKey } from "../../src/components/CreateBottomSheet";
+import { useAuthStore } from "../../state/useAuthStore";
 
 export default function TabsLayout() {
   const router = useRouter();
-  const pathname = usePathname();
   const [sheetOpen, setSheetOpen] = useState(false);
+  const { initAuth, loading, session } = useAuthStore();
 
   useEffect(() => {
-    (async () => {
-      const user = await getSessionUser();
-      if (!user) router.replace("/(auth)/login");
-      else if (!(await isOnboardingComplete())) router.replace("/onboarding");
-    })();
-  }, [router]);
+    initAuth().catch(() => {
+      router.replace("/(auth)/login");
+    });
+  }, [initAuth, router]);
 
-  const showFab = pathname === "/home" || pathname === "/reels" || pathname === "/courses" || pathname === "/profile";
+  useEffect(() => {
+    if (!loading && !session) {
+      router.replace("/(auth)/login");
+    }
+  }, [loading, session, router]);
 
   const onOpenCreate = useCallback(() => setSheetOpen(true), []);
   const onCloseCreate = useCallback(() => setSheetOpen(false), []);
   const onCreateAction = useCallback(
-    (route: "/create/pdf" | "/create/audio" | "/create/qcm" | "/create/flashcards") => {
+    (action: CreateActionKey) => {
       setSheetOpen(false);
-      router.push(route);
+      if (action === "post") router.push("/create");
+      if (action === "pdf") router.push("/create/pdf");
+      if (action === "qcm") router.push("/create/qcm");
+      if (action === "group") router.push("/messages");
     },
     [router]
   );
@@ -86,8 +57,8 @@ export default function TabsLayout() {
             shadowRadius: 8,
             elevation: 8,
           },
-          tabBarActiveTintColor: "#ffffff",
-          tabBarInactiveTintColor: "rgba(255,255,255,0.45)",
+          tabBarActiveTintColor: "#6E5CFF",
+          tabBarInactiveTintColor: "rgba(255,255,255,0.5)",
           tabBarLabelStyle: {
             fontSize: 10,
             fontWeight: "700",
@@ -111,15 +82,63 @@ export default function TabsLayout() {
           name="home"
           options={{
             title: "Accueil",
-            tabBarIcon: ({ color, focused }) => <TabIcon name="home" focused={focused} color={color} />,
+            tabBarLabel: "Accueil",
+            tabBarAccessibilityLabel: "Accueil",
+            tabBarIcon: ({ color, focused }) => (
+              <Ionicons name={focused ? "home" : "home-outline"} size={20} color={color} />
+            ),
           }}
+          listeners={{ tabPress: () => Haptics.selectionAsync() }}
         />
 
         <Tabs.Screen
-          name="reels"
+          name="messages/index"
           options={{
-            title: "Reels",
-            tabBarIcon: ({ focused }) => <EmojiIcon glyph="🎬" focused={focused} />,
+            title: "Messages",
+            tabBarLabel: "Messages",
+            tabBarAccessibilityLabel: "Messages",
+            tabBarIcon: ({ color, focused }) => (
+              <Ionicons name={focused ? "chatbubble-ellipses" : "chatbubble-ellipses-outline"} size={20} color={color} />
+            ),
+          }}
+          listeners={{ tabPress: () => Haptics.selectionAsync() }}
+        />
+
+        <Tabs.Screen
+          name="compose"
+          options={{
+            title: "Creer",
+            tabBarLabel: "Creer",
+            tabBarAccessibilityLabel: "Creer",
+            tabBarButton: () => (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Creer"
+                onPress={async () => {
+                  await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  onOpenCreate();
+                }}
+                style={{
+                  width: 62,
+                  height: 62,
+                  borderRadius: 31,
+                  backgroundColor: "#5B4CFF",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginTop: -20,
+                  borderWidth: 3,
+                  borderColor: "#0B0B0F",
+                  shadowColor: "#000",
+                  shadowOpacity: 0.35,
+                  shadowRadius: 10,
+                  shadowOffset: { width: 0, height: 6 },
+                  elevation: 10,
+                }}
+              >
+                <Ionicons name="add" size={28} color="#FFFFFF" />
+              </Pressable>
+            ),
+            tabBarLabelStyle: { display: "none" },
           }}
         />
 
@@ -127,23 +146,33 @@ export default function TabsLayout() {
           name="courses"
           options={{
             title: "Cours",
-            tabBarIcon: ({ color, focused }) => <TabIcon name="revisions" focused={focused} color={color} />,
+            tabBarLabel: "Cours",
+            tabBarAccessibilityLabel: "Cours",
+            tabBarIcon: ({ color, focused }) => (
+              <Ionicons name={focused ? "book" : "book-outline"} size={20} color={color} />
+            ),
           }}
+          listeners={{ tabPress: () => Haptics.selectionAsync() }}
         />
 
         <Tabs.Screen
           name="profile"
           options={{
             title: "Profil",
-            tabBarIcon: ({ color, focused }) => <TabIcon name="profile" focused={focused} color={color} />,
+            tabBarLabel: "Profil",
+            tabBarAccessibilityLabel: "Profil",
+            tabBarIcon: ({ color, focused }) => (
+              <Ionicons name={focused ? "person" : "person-outline"} size={20} color={color} />
+            ),
           }}
+          listeners={{ tabPress: () => Haptics.selectionAsync() }}
         />
 
+        <Tabs.Screen name="reels" options={{ href: null }} />
         <Tabs.Screen name="search" options={{ href: null }} />
       </Tabs>
 
-      {showFab ? <FloatingCreateButton bottom={Platform.OS === "ios" ? 58 : 48} onPress={onOpenCreate} /> : null}
-      <CreateSheet visible={sheetOpen} onClose={onCloseCreate} onActionPress={onCreateAction} />
+      <CreateBottomSheet visible={sheetOpen} onClose={onCloseCreate} onActionPress={onCreateAction} />
     </View>
   );
 }

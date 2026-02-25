@@ -2,13 +2,14 @@ import React, { useMemo, useState } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { signUp } from "../../src/features/auth/authRepo";
 import { theme } from "../../src/core/ui/theme";
 import { AppText } from "../../src/core/ui/AppText";
 import { AppButton } from "../../src/core/ui/AppButton";
 import { AppInput } from "../../src/core/ui/AppInput";
 import { AppBadge } from "../../src/core/ui/AppBadge";
 import { Toast } from "../../src/core/ui/Toast";
+import { useAuthStore } from "../../state/useAuthStore";
+import { upsertMyProfile } from "../../lib/services/profileService";
 
 type AccountType = "student" | "professor" | "school";
 
@@ -28,6 +29,7 @@ const accountTypes = [
 
 export default function RegisterScreen() {
   const router = useRouter();
+  const { signUp } = useAuthStore();
 
   const [accountType, setAccountType] = useState<AccountType>("student");
   const [name, setName] = useState("");
@@ -70,18 +72,19 @@ export default function RegisterScreen() {
 
     setLoading(true);
     try {
-      await signUp({
-        name: name.trim(),
-        email: email.trim().toLowerCase(),
-        password,
-        accountType,
-        schoolName: accountType === "school" ? schoolCode.trim() : undefined,
-      });
-      setToast("Compte cree avec succes.");
+      await signUp(email.trim().toLowerCase(), password);
+      await upsertMyProfile({
+        full_name: name.trim(),
+        username: email.trim().split("@")[0],
+        filiere: accountType === "school" ? schoolCode.trim() : "Informatique",
+        niveau: accountType === "professor" ? "Professeur" : accountType === "school" ? "Etablissement" : "Etudiant",
+      }).catch(() => null);
+
+      setToast("Compte cree avec succes. Connecte-toi pour continuer.");
       setTimeout(() => {
         setToast("");
         router.replace("/(auth)/login");
-      }, 900);
+      }, 1000);
     } catch (error: any) {
       setToast(error?.message || "Impossible de creer le compte.");
       setTimeout(() => setToast(""), 2000);

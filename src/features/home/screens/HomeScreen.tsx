@@ -1,153 +1,238 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Pressable, RefreshControl, TextInput, View } from "react-native";
-import { useRouter } from "expo-router";
-import { FlashList } from "@shopify/flash-list";
-import Screen from "../../../core/ui/Screen";
-import { AppText } from "../../../core/ui/AppText";
-import { AppButton } from "../../../core/ui/AppButton";
-import { AppHeader } from "../../../core/ui/AppHeader";
-import { Skeleton } from "../../../core/ui/Skeleton";
-import Card from "../../../core/ui/Card";
-import DashboardWidget from "../../dashboard/DashboardWidget";
-import { useHomeFeed } from "../hooks/useHomeFeed";
-import { HomeTabs } from "../components/HomeTabs";
-import { PostCard } from "../components/PostCard";
-import { DeadlineCarousel } from "../components/DeadlineCarousel";
-import { SuggestionCard } from "../components/SuggestionCard";
-import { theme } from "../../../core/ui/theme";
-
-const quickActions = [
-  { label: "QCM", route: "/(modals)/qcm-new" },
-  { label: "Fiche", route: "/(modals)/note-new" },
-  { label: "Resume", route: "/(modals)/note-new" },
-  { label: "Audio", route: "/(modals)/create" },
-];
+import { Href, useRouter } from "expo-router";
+import { memo, useEffect, useMemo, useState } from "react";
+import {
+  ActivityIndicator,
+  FlatList,
+  Modal,
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+import { colors } from "../../../../constants/colors";
+import { HomeHeader } from "../../../components/HomeHeader";
+import { PostCard } from "../../../components/PostCard";
+import { TrendCard } from "../../../components/TrendCard";
+import { FeedPost, PostType } from "../../../../types/db";
+import { trendsMock, TrendItem } from "../homeMock";
+import { useFeedStore } from "../../../../state/useFeedStore";
+import { useAuthStore } from "../../../../state/useAuthStore";
 
 function HomeScreenComponent() {
   const router = useRouter();
+  const { profile } = useAuthStore();
   const {
-    tabs,
-    activeTab,
     posts,
+    loading,
     refreshing,
     loadingMore,
-    initialLoading,
-    loadInitial,
+    commentsByPost,
+    commentsLoading,
     refresh,
     loadMore,
-    switchTab,
-    scrollOffsetByTab,
-  } = useHomeFeed();
-  const [composerOpen, setComposerOpen] = useState(false);
-  const [composerText, setComposerText] = useState("");
-  const listRef = useRef<any>(null);
+    toggleLike,
+    toggleSave,
+    openComments,
+    addComment,
+  } = useFeedStore();
+
+  const [selectedCommentPost, setSelectedCommentPost] = useState<FeedPost | null>(null);
+  const [commentText, setCommentText] = useState("");
+
+  const filiere = profile?.filiere || undefined;
 
   useEffect(() => {
-    loadInitial();
-  }, [loadInitial]);
+    refresh(filiere).catch(() => null);
+  }, [refresh, filiere]);
 
-  useEffect(() => {
-    const y = scrollOffsetByTab.current[activeTab] ?? 0;
-    requestAnimationFrame(() => listRef.current?.scrollToOffset({ offset: y, animated: false }));
-  }, [activeTab, scrollOffsetByTab]);
+  const notificationCount = useMemo(() => 3, []);
 
-  const publish = useCallback(() => {
-    if (!composerText.trim()) return;
-    setComposerText("");
-    setComposerOpen(false);
-  }, [composerText]);
+  const onPressTrend = (trend: TrendItem) => {
+    router.push(`/trends/${trend.id}` as Href);
+  };
 
-  const header = useMemo(
-    () => (
-      <View style={{ gap: 12 }}>
-        <View>
-          <AppHeader title="Fil d'actualite" subtitle="Campus ESGI" rightLabel="💬" onRightPress={() => router.push("/messages")} />
-        </View>
+  const onPressContent = (post: FeedPost) => {
+    router.push(`/content/${post.id}` as Href);
+  };
 
-        <DashboardWidget onNavigate={(route) => router.push(route as any)} />
-        <HomeTabs tabs={tabs} active={activeTab} onChange={switchTab} />
-        <DeadlineCarousel />
+  const onPressComments = async (post: FeedPost) => {
+    setSelectedCommentPost(post);
+    await openComments(post.id).catch(() => null);
+  };
 
-        <Pressable onPress={() => setComposerOpen((v) => !v)}>
-          <Card>
-            <AppText muted>Quoi de neuf ?</AppText>
-          </Card>
-        </Pressable>
-
-        {composerOpen ? (
-          <Card>
-            <TextInput
-              value={composerText}
-              onChangeText={setComposerText}
-              placeholder="Ecris une annonce..."
-              placeholderTextColor={theme.colors.textMuted}
-              multiline
-              style={{ color: theme.colors.text, minHeight: 70 }}
-            />
-            <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 10 }}>
-              <AppButton variant="secondary" onPress={() => router.push("/(modals)/create-new")}>Ajouter</AppButton>
-              <AppButton onPress={publish}>Publier</AppButton>
-            </View>
-          </Card>
-        ) : null}
-
-        <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
-          {quickActions.map((a) => (
-            <AppButton key={a.label} variant="secondary" onPress={() => router.push(a.route)}>
-              {a.label}
-            </AppButton>
-          ))}
-        </View>
-
-        <SuggestionCard
-          title="Suggestion"
-          subtitle="Lance une session pomodoro pour garder le rythme"
-          onPress={() => router.push("/(modals)/pomodoro")}
-        />
-      </View>
-    ),
-    [activeTab, composerOpen, composerText, publish, router, switchTab, tabs]
-  );
+  const submitComment = async () => {
+    if (!selectedCommentPost || !commentText.trim()) return;
+    await addComment(selectedCommentPost.id, commentText.trim()).catch(() => null);
+    setCommentText("");
+  };
 
   return (
-    <Screen>
-      {initialLoading ? (
-        <View style={{ gap: 10, marginTop: 14 }}>
-          <Skeleton height={28} width="55%" />
-          <Skeleton height={120} />
-          <Skeleton height={22} width="70%" />
-          <Skeleton height={180} />
-          <Skeleton height={180} />
-          <ActivityIndicator color={theme.colors.accent} style={{ marginTop: 8 }} />
+    <View style={styles.screen}>
+      <HomeHeader
+        notificationCount={notificationCount}
+        onPressBoost={() => {}}
+        onPressFavorites={() => {}}
+        onPressNotifications={() => {}}
+        onPressTitle={() => {}}
+      />
+
+      <FlatList
+        data={posts}
+        keyExtractor={(item) => item.id}
+        style={styles.list}
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => refresh(filiere)} tintColor="#fff" />}
+        onEndReachedThreshold={0.35}
+        onEndReached={() => loadMore(filiere)}
+        ListHeaderComponent={
+          <View>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.sectionTitle}>Tendances etudes</Text>
+              <Pressable><Text style={styles.sectionAction}>Voir tout</Text></Pressable>
+            </View>
+
+            <FlatList
+              data={trendsMock}
+              keyExtractor={(item) => item.id}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              renderItem={({ item }) => <TrendCard item={item} onPress={onPressTrend} />}
+              contentContainerStyle={styles.trendsList}
+            />
+
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.sectionTitle}>Fil d'actu</Text>
+              <Text style={styles.sectionHint}>{filiere || "Pour toi"}</Text>
+            </View>
+          </View>
+        }
+        ListEmptyComponent={
+          loading ? (
+            <View style={styles.emptyWrap}>
+              <ActivityIndicator color="#fff" />
+              <Text style={styles.emptyText}>Chargement du feed...</Text>
+            </View>
+          ) : (
+            <View style={styles.emptyWrap}>
+              <Text style={styles.emptyText}>Aucun post. Cree ta premiere publication.</Text>
+            </View>
+          )
+        }
+        ListFooterComponent={loadingMore ? <ActivityIndicator color="#fff" style={{ marginVertical: 12 }} /> : null}
+        renderItem={({ item }) => (
+          <PostCard
+            post={item}
+            onToggleLike={(id) => toggleLike(id)}
+            onToggleSave={(id) => toggleSave(id)}
+            onPressComments={onPressComments}
+            onPressContent={onPressContent}
+          />
+        )}
+      />
+
+      <Modal visible={!!selectedCommentPost} transparent animationType="fade" onRequestClose={() => setSelectedCommentPost(null)}>
+        <View style={styles.modalOverlay}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setSelectedCommentPost(null)} />
+          <View style={styles.commentSheet}>
+            <Text style={styles.commentTitle}>Commentaires</Text>
+            <FlatList
+              data={selectedCommentPost ? commentsByPost[selectedCommentPost.id] ?? [] : []}
+              keyExtractor={(item) => item.id}
+              style={{ maxHeight: 230 }}
+              ListEmptyComponent={
+                <Text style={styles.commentTextMuted}>
+                  {commentsLoading ? "Chargement..." : "Aucun commentaire"}
+                </Text>
+              }
+              renderItem={({ item }) => (
+                <View style={styles.commentItem}>
+                  <Text style={styles.commentAuthor}>{item.author?.username || "user"}</Text>
+                  <Text style={styles.commentBody}>{item.content}</Text>
+                </View>
+              )}
+            />
+
+            <View style={styles.commentInputRow}>
+              <TextInput
+                value={commentText}
+                onChangeText={setCommentText}
+                placeholder="Ajouter un commentaire"
+                placeholderTextColor="#8D8D95"
+                style={styles.commentInput}
+              />
+              <Pressable style={styles.commentSend} onPress={submitComment}>
+                <Text style={styles.commentSendText}>Envoyer</Text>
+              </Pressable>
+            </View>
+          </View>
         </View>
-      ) : (
-        <FlashList
-          ref={listRef}
-          data={posts}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <PostCard post={item} />}
-          ListHeaderComponent={header}
-          ListHeaderComponentStyle={{ paddingBottom: 12 }}
-          ListEmptyComponent={
-            <Card>
-              <AppText>Aucun post</AppText>
-              <AppText muted variant="caption" style={{ marginTop: 6 }}>
-                Change d'onglet ou rafraichis le feed.
-              </AppText>
-            </Card>
-          }
-          onEndReachedThreshold={0.4}
-          onEndReached={loadMore}
-          ListFooterComponent={loadingMore ? <ActivityIndicator color={theme.colors.accent} /> : null}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} />}
-          onScroll={(evt) => {
-            scrollOffsetByTab.current[activeTab] = evt.nativeEvent.contentOffset.y;
-          }}
-          showsVerticalScrollIndicator={false}
-        />
-      )}
-    </Screen>
+      </Modal>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: colors.background },
+  list: { flex: 1 },
+  contentContainer: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 120 },
+  sectionHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 10,
+  },
+  sectionTitle: { color: colors.text, fontSize: 20, fontWeight: "700" },
+  sectionAction: { color: colors.accentAlt, fontWeight: "600", fontSize: 13 },
+  trendsList: { paddingBottom: 18 },
+  sectionHint: { color: colors.textMuted, fontSize: 13 },
+  emptyWrap: { alignItems: "center", paddingVertical: 20, gap: 10 },
+  emptyText: { color: colors.textMuted },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
+  },
+  commentSheet: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    backgroundColor: "#0B0B0B",
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 18,
+    gap: 10,
+  },
+  commentTitle: { color: colors.text, fontSize: 18, fontWeight: "700" },
+  commentItem: {
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255,255,255,0.06)",
+  },
+  commentAuthor: { color: colors.text, fontWeight: "700", fontSize: 12 },
+  commentBody: { color: "#DFDFE8", marginTop: 3 },
+  commentTextMuted: { color: colors.textMuted },
+  commentInputRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  commentInput: {
+    flex: 1,
+    backgroundColor: "#141414",
+    borderWidth: 1,
+    borderColor: colors.border,
+    color: colors.text,
+    minHeight: 40,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+  },
+  commentSend: {
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: colors.accent,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 12,
+  },
+  commentSendText: { color: colors.text, fontWeight: "700" },
+});
 
 export const HomeScreen = memo(HomeScreenComponent);
