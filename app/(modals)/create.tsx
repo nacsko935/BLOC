@@ -1,35 +1,61 @@
 import { useRouter } from "expo-router";
-import { View, Text, Pressable } from "react-native";
+import { Alert, View } from "react-native";
 import BottomSheet from "../../src/core/ui/BottomSheet";
 import ListItem from "../../src/core/ui/ListItem";
+import { AppButton } from "../../src/core/ui/AppButton";
 
 export default function CreateModal() {
   const router = useRouter();
 
   return (
-    <BottomSheet title="Créer" onClose={() => router.back()}>
-      <ListItem title="Importer un fichier" subtitle="PDF, image, doc" icon="📎" onPress={() => {}} />
-      <ListItem title="Audio" subtitle="Enregistrer / importer" icon="🎙️" onPress={() => {}} />
+    <BottomSheet title="Creer" onClose={() => router.back()}>
       <ListItem
-        title="Créer un QCM"
-        subtitle="Questions + réponses"
+        title="Importer un fichier"
+        subtitle="PDF, image, doc"
+        icon="📎"
+        onPress={() => router.replace("/create/import")}
+      />
+      <ListItem
+        title="Audio"
+        subtitle="Enregistrer / importer"
+        icon="🎙️"
+        onPress={() => router.replace("/create/audio")}
+      />
+      <ListItem
+        title="Creer un QCM"
+        subtitle="Questions + reponses"
         icon="🧪"
         onPress={() => router.replace("/(modals)/qcm-new")}
       />
       <ListItem
-        title="Créer une fiche"
-        subtitle="Note structurée"
+        title="Creer une fiche"
+        subtitle="Note structuree"
         icon="📝"
         onPress={() => router.replace("/(modals)/note-new")}
       />
-      <ListItem title="Créer un résumé" subtitle="Synthèse rapide" icon="🧠" onPress={() => {}} />
-      <ListItem title="Scanner" subtitle="Optionnel" icon="📷" onPress={() => {}} />
-      <ListItem title="Outils d’étude" subtitle="Flashcards, mindmap, planning" icon="⚙️" onPress={() => {}} />
+      <ListItem
+        title="Creer un resume"
+        subtitle="Synthese rapide"
+        icon="🧠"
+        onPress={() => router.replace("/create/pdf")}
+      />
+      <ListItem
+        title="Scanner"
+        subtitle="A venir"
+        icon="📷"
+        onPress={() => Alert.alert("Scanner", "Cette action arrive tres bientot.")}
+      />
+      <ListItem
+        title="Outils d'etude"
+        subtitle="Flashcards, mindmap, planning"
+        icon="⚙️"
+        onPress={() => router.replace("/create/flashcards")}
+      />
 
-      <View style={{ alignItems: "center", marginTop: 4 }}>
-        <Pressable onPress={() => router.back()} style={{ padding: 10 }}>
-          <Text style={{ color: "rgba(255,255,255,0.7)", fontWeight: "800" }}>Annuler</Text>
-        </Pressable>
+      <View style={{ marginTop: 8 }}>
+        <AppButton variant="secondary" onPress={() => router.back()}>
+          Annuler
+        </AppButton>
       </View>
     </BottomSheet>
   );

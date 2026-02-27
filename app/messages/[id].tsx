@@ -3,16 +3,19 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
+  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { MessageBubble } from "../../src/features/messages/v1/components/MessageBubble";
-import { DirectChatMessage, conversationMessages, conversations } from "../../src/features/messages/v1/mock";
+import { useMessagesStore } from "../../state/useMessagesStore";
+import { useAuthStore } from "../../state/useAuthStore";
+import { AppButton } from "../../src/core/ui/AppButton";
+import * as Haptics from "expo-haptics";
 
 function getStringParam(value: string | string[] | undefined): string {
   if (Array.isArray(value)) return value[0] ?? "";
@@ -25,48 +28,53 @@ export default function ChatDetailScreen() {
   const id = getStringParam(params.id);
 
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<DirectChatMessage[]>([]);
-  const listRef = useRef<FlatList<DirectChatMessage>>(null);
+  const [sending, setSending] = useState(false);
+  const listRef = useRef<FlatList<any>>(null);
+  const { user } = useAuthStore();
+  const { inbox, messagesByConversation, openConversation, sendMessage, subscribeConversation, markRead, loadingMessages } = useMessagesStore();
 
+  const messages = messagesByConversation[id] || [];
   const contactName = useMemo(
-    () => conversations.find((conversation) => conversation.id === id)?.name || "Conversation",
-    [id]
+    () => inbox.find((conversation) => conversation.conversationId === id)?.name || "Conversation",
+    [id, inbox]
   );
 
   useEffect(() => {
-    setMessages(conversationMessages[id] || []);
-  }, [id]);
+    if (!id) return;
+    openConversation(id).catch(() => null);
+    markRead(id).catch(() => null);
+    const unsubscribe = subscribeConversation(id);
+    return unsubscribe;
+  }, [id, openConversation, subscribeConversation, markRead]);
 
   useEffect(() => {
     const timer = setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 40);
     return () => clearTimeout(timer);
   }, [messages.length]);
 
-  const send = () => {
+  const send = async () => {
     const text = input.trim();
-    if (!text) return;
+    if (!text || !id || sending) return;
 
-    const now = new Date();
-    const timestamp = now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-    const next: DirectChatMessage = {
-      id: `local-${Date.now()}`,
-      senderId: "me",
-      senderName: "Moi",
-      text,
-      timestamp,
-    };
-
-    setMessages((prev) => [...prev, next]);
-    setInput("");
+    try {
+      setSending(true);
+      await sendMessage(id, text);
+      Haptics.selectionAsync().catch(() => null);
+      setInput("");
+    } catch (error: any) {
+      Alert.alert("Erreur", error?.message || "Impossible d'envoyer le message");
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
     <View style={styles.container}>
       <KeyboardAvoidingView style={styles.keyboard} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <View style={styles.header}>
-          <Pressable onPress={() => router.back()} style={({ pressed }) => [styles.headerButton, pressed && styles.pressed]}>
+          <AppButton variant="secondary" onPress={() => router.back()} style={styles.headerButton}>
             <Ionicons name="chevron-back" size={20} color="#F5F5F5" />
-          </Pressable>
+          </AppButton>
           <Text style={styles.headerTitle}>{contactName}</Text>
           <View style={styles.headerSpacer} />
         </View>
@@ -76,10 +84,13 @@ export default function ChatDetailScreen() {
           data={messages}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <MessageBubble text={item.text} timestamp={item.timestamp} isMe={item.senderId === "me"} />
+            <MessageBubble text={item.text} timestamp={item.timestamp} isMe={item.senderId === user?.id} senderName={item.senderName} />
           )}
           contentContainerStyle={styles.messagesContent}
           showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            loadingMessages ? <Text style={styles.empty}>Chargement...</Text> : <Text style={styles.empty}>Aucun message</Text>
+          }
         />
 
         <View style={styles.composer}>
@@ -91,13 +102,9 @@ export default function ChatDetailScreen() {
             style={styles.input}
             multiline
           />
-          <Pressable
-            onPress={send}
-            style={({ pressed }) => [styles.sendButton, !input.trim() && styles.sendButtonDisabled, pressed && styles.pressed]}
-            disabled={!input.trim()}
-          >
-            <Text style={styles.sendButtonText}>Envoyer</Text>
-          </Pressable>
+          <AppButton loading={sending} onPress={send} style={[styles.sendButton, !input.trim() && styles.sendButtonDisabled]} disabled={!input.trim() || sending}>
+            Envoyer
+          </AppButton>
         </View>
       </KeyboardAvoidingView>
     </View>
@@ -105,13 +112,8 @@ export default function ChatDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#000000",
-  },
-  keyboard: {
-    flex: 1,
-  },
+  container: { flex: 1, backgroundColor: "#000000" },
+  keyboard: { flex: 1 },
   header: {
     paddingTop: 56,
     paddingHorizontal: 16,
@@ -129,22 +131,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  headerTitle: {
-    flex: 1,
-    textAlign: "center",
-    color: "#F5F5F5",
-    fontSize: 18,
-    fontWeight: "700",
-  },
-  headerSpacer: {
-    width: 34,
-  },
-  messagesContent: {
-    paddingHorizontal: 12,
-    paddingVertical: 14,
-    gap: 8,
-    paddingBottom: 22,
-  },
+  headerTitle: { flex: 1, textAlign: "center", color: "#F5F5F5", fontSize: 18, fontWeight: "700" },
+  headerSpacer: { width: 34 },
+  messagesContent: { paddingHorizontal: 12, paddingVertical: 14, gap: 8, paddingBottom: 22 },
+  empty: { color: "#8F8F99", textAlign: "center", marginTop: 20 },
   composer: {
     flexDirection: "row",
     alignItems: "flex-end",
@@ -175,15 +165,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "#2C7BFF",
   },
-  sendButtonDisabled: {
-    opacity: 0.45,
-  },
-  sendButtonText: {
-    color: "#FFFFFF",
-    fontWeight: "700",
-    fontSize: 13,
-  },
-  pressed: {
-    opacity: 0.82,
-  },
+  sendButtonDisabled: { opacity: 0.45 },
+  sendButtonText: { color: "#FFFFFF", fontWeight: "700", fontSize: 13 },
 });

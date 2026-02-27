@@ -1,6 +1,7 @@
 import { Href, useRouter } from "expo-router";
-import { memo, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import {
+  Alert,
   ActivityIndicator,
   FlatList,
   Modal,
@@ -19,6 +20,9 @@ import { FeedPost, PostType } from "../../../../types/db";
 import { trendsMock, TrendItem } from "../homeMock";
 import { useFeedStore } from "../../../../state/useFeedStore";
 import { useAuthStore } from "../../../../state/useAuthStore";
+import { blockUser, hidePost, reportTarget } from "../../../../lib/services/moderationService";
+import { AppButton } from "../../../core/ui/AppButton";
+import { seedInitialContentIfEmptyDev } from "../../../../lib/dev/seed";
 
 function HomeScreenComponent() {
   const router = useRouter();
@@ -47,35 +51,50 @@ function HomeScreenComponent() {
     refresh(filiere).catch(() => null);
   }, [refresh, filiere]);
 
+  useEffect(() => {
+    seedInitialContentIfEmptyDev()
+      .then((result) => {
+        if (result) {
+          refresh(filiere).catch(() => null);
+        }
+      })
+      .catch(() => null);
+  }, [refresh, filiere]);
+
   const notificationCount = useMemo(() => 3, []);
 
-  const onPressTrend = (trend: TrendItem) => {
+  const onPressTrend = useCallback((trend: TrendItem) => {
     router.push(`/trends/${trend.id}` as Href);
-  };
+  }, [router]);
 
-  const onPressContent = (post: FeedPost) => {
+  const onPressContent = useCallback((post: FeedPost) => {
     router.push(`/content/${post.id}` as Href);
-  };
+  }, [router]);
 
-  const onPressComments = async (post: FeedPost) => {
+  const onPressComments = useCallback(async (post: FeedPost) => {
     setSelectedCommentPost(post);
-    await openComments(post.id).catch(() => null);
-  };
+    await openComments(post.id).catch((error: any) => {
+      Alert.alert("Erreur", error?.message || "Impossible de charger les commentaires");
+    });
+  }, [openComments]);
 
-  const submitComment = async () => {
+  const submitComment = useCallback(async () => {
     if (!selectedCommentPost || !commentText.trim()) return;
-    await addComment(selectedCommentPost.id, commentText.trim()).catch(() => null);
+    await addComment(selectedCommentPost.id, commentText.trim()).catch((error: any) => {
+      Alert.alert("Erreur", error?.message || "Impossible d'ajouter le commentaire");
+    });
     setCommentText("");
-  };
+  }, [addComment, commentText, selectedCommentPost]);
 
   return (
     <View style={styles.screen}>
       <HomeHeader
         notificationCount={notificationCount}
-        onPressBoost={() => {}}
-        onPressFavorites={() => {}}
-        onPressNotifications={() => {}}
-        onPressTitle={() => {}}
+        avatarLabel={profile?.full_name || profile?.username || "B"}
+        onPressBoost={() => router.push("/create")}
+        onPressFavorites={() => Alert.alert("Favoris", "Tu pourras retrouver tes contenus favoris ici.")}
+        onPressNotifications={() => Alert.alert("Notifications", "Aucune nouvelle notification importante.")}
+        onPressTitle={() => router.push("/(tabs)/search")}
       />
 
       <FlatList
@@ -91,7 +110,7 @@ function HomeScreenComponent() {
           <View>
             <View style={styles.sectionHeaderRow}>
               <Text style={styles.sectionTitle}>Tendances etudes</Text>
-              <Pressable><Text style={styles.sectionAction}>Voir tout</Text></Pressable>
+              <AppButton variant="secondary" onPress={() => router.push("/(tabs)/search")}>Voir tout</AppButton>
             </View>
 
             <FlatList
@@ -109,26 +128,94 @@ function HomeScreenComponent() {
             </View>
           </View>
         }
-        ListEmptyComponent={
-          loading ? (
-            <View style={styles.emptyWrap}>
-              <ActivityIndicator color="#fff" />
-              <Text style={styles.emptyText}>Chargement du feed...</Text>
+        ListEmptyComponent={loading ? (
+          <View style={styles.skeletonWrap}>
+            {[1, 2, 3].map((item) => (
+              <View key={item} style={styles.skeletonCard}>
+                <View style={styles.skeletonLineLg} />
+                <View style={styles.skeletonLineMd} />
+                <View style={styles.skeletonLineSm} />
+              </View>
+            ))}
+          </View>
+        ) : (
+          <View style={styles.emptyWrap}>
+            <Text style={styles.emptyText}>Aucun post. Cree ta premiere publication.</Text>
+            <View style={styles.emptyActions}>
+              <AppButton onPress={() => router.push("/create")}>Creer ton premier post</AppButton>
+              <AppButton variant="secondary" onPress={() => router.push("/(tabs)/messages/index")}>
+                Rejoindre un groupe
+              </AppButton>
             </View>
-          ) : (
-            <View style={styles.emptyWrap}>
-              <Text style={styles.emptyText}>Aucun post. Cree ta premiere publication.</Text>
-            </View>
-          )
-        }
+          </View>
+        )}
         ListFooterComponent={loadingMore ? <ActivityIndicator color="#fff" style={{ marginVertical: 12 }} /> : null}
         renderItem={({ item }) => (
           <PostCard
             post={item}
-            onToggleLike={(id) => toggleLike(id)}
-            onToggleSave={(id) => toggleSave(id)}
+            onToggleLike={async (id) => {
+              try {
+                await toggleLike(id);
+              } catch (error: any) {
+                Alert.alert("Erreur", error?.message || "Action like indisponible");
+              }
+            }}
+            onToggleSave={async (id) => {
+              try {
+                await toggleSave(id);
+              } catch (error: any) {
+                Alert.alert("Erreur", error?.message || "Action sauvegarde indisponible");
+              }
+            }}
             onPressComments={onPressComments}
             onPressContent={onPressContent}
+            onPressFollow={(post) => {
+              const name = post.author?.username || post.author?.full_name || "cet utilisateur";
+              Alert.alert("Suivi", `Tu suis maintenant ${name}.`);
+            }}
+            onPressShare={(post) => {
+              Alert.alert("Partager", `Publication "${post.title || "Sans titre"}" partagee (demo).`);
+            }}
+            onPressMore={(post) => {
+              Alert.alert("Actions", "Selectionne une action", [
+                {
+                  text: "Signaler",
+                  onPress: async () => {
+                    try {
+                      await reportTarget({ targetType: "post", targetId: post.id, reason: "signalement utilisateur" });
+                      Alert.alert("Merci", "Signalement envoye.");
+                    } catch (error: any) {
+                      Alert.alert("Erreur", error?.message || "Impossible de signaler");
+                    }
+                  },
+                },
+                {
+                  text: "Masquer",
+                  onPress: async () => {
+                    try {
+                      await hidePost(post.id);
+                      await refresh(filiere);
+                    } catch (error: any) {
+                      Alert.alert("Erreur", error?.message || "Impossible de masquer");
+                    }
+                  },
+                },
+                {
+                  text: "Bloquer l'auteur",
+                  style: "destructive",
+                  onPress: async () => {
+                    try {
+                      if (!post.author?.id) return;
+                      await blockUser(post.author.id);
+                      await refresh(filiere);
+                    } catch (error: any) {
+                      Alert.alert("Erreur", error?.message || "Impossible de bloquer");
+                    }
+                  },
+                },
+                { text: "Annuler", style: "cancel" },
+              ]);
+            }}
           />
         )}
       />
@@ -163,9 +250,9 @@ function HomeScreenComponent() {
                 placeholderTextColor="#8D8D95"
                 style={styles.commentInput}
               />
-              <Pressable style={styles.commentSend} onPress={submitComment}>
-                <Text style={styles.commentSendText}>Envoyer</Text>
-              </Pressable>
+              <AppButton style={styles.commentSend} onPress={submitComment}>
+                Envoyer
+              </AppButton>
             </View>
           </View>
         </View>
@@ -190,6 +277,28 @@ const styles = StyleSheet.create({
   sectionHint: { color: colors.textMuted, fontSize: 13 },
   emptyWrap: { alignItems: "center", paddingVertical: 20, gap: 10 },
   emptyText: { color: colors.textMuted },
+  emptyActions: { width: "100%", gap: 8, paddingHorizontal: 24 },
+  emptyCta: {
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: colors.accent,
+    paddingHorizontal: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emptyCtaText: { color: "#fff", fontWeight: "700" },
+  skeletonWrap: { gap: 10, paddingVertical: 8 },
+  skeletonCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+    backgroundColor: "#101010",
+    padding: 14,
+    gap: 8,
+  },
+  skeletonLineLg: { height: 18, borderRadius: 9, backgroundColor: "#1E1E1E", width: "70%" },
+  skeletonLineMd: { height: 12, borderRadius: 6, backgroundColor: "#1C1C1C", width: "92%" },
+  skeletonLineSm: { height: 12, borderRadius: 6, backgroundColor: "#1A1A1A", width: "60%" },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",

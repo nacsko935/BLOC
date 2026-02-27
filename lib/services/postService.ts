@@ -1,5 +1,6 @@
 import { getSupabaseOrThrow } from "../supabase";
 import { FeedComment, FeedPost, Post, PostType, Profile } from "../../types/db";
+import { fetchBlockedUserIds, fetchHiddenPostIds } from "./moderationService";
 
 type FetchFeedParams = {
   filiere?: string;
@@ -45,14 +46,21 @@ export async function fetchFeed(params: FetchFeedParams = {}): Promise<FetchFeed
   const { data, error } = await query;
   if (error) throw error;
 
-  const posts = (data as Post[]) ?? [];
-  if (posts.length === 0) return { posts: [], nextCursor: null };
+  const rawPosts = (data as Post[]) ?? [];
+  if (rawPosts.length === 0) return { posts: [], nextCursor: null };
+
+  const [blockedUserIds, hiddenPostIds] = await Promise.all([fetchBlockedUserIds(), fetchHiddenPostIds()]);
+  const blockedSet = new Set(blockedUserIds);
+  const hiddenSet = new Set(hiddenPostIds);
+
+  const posts = rawPosts.filter((post) => !blockedSet.has(post.author_id) && !hiddenSet.has(post.id));
+  if (posts.length === 0) return { posts: [], nextCursor: rawPosts.length === limit ? rawPosts[rawPosts.length - 1].created_at : null };
 
   const postIds = posts.map((post) => post.id);
   const authorIds = Array.from(new Set(posts.map((post) => post.author_id)));
 
   const [profilesRes, likesRes, savesRes, commentsRes, myLikesRes, mySavesRes] = await Promise.all([
-    supabase.from("profiles").select("id,username,full_name,bio,filiere,niveau,avatar_url").in("id", authorIds),
+    supabase.from("profiles").select("id,username,full_name,bio,filiere,niveau,avatar_url,notification_enabled,push_enabled,analytics_enabled").in("id", authorIds),
     supabase.from("post_likes").select("post_id").in("post_id", postIds),
     supabase.from("post_saves").select("post_id").in("post_id", postIds),
     supabase.from("comments").select("post_id").in("post_id", postIds),
@@ -86,7 +94,7 @@ export async function fetchFeed(params: FetchFeedParams = {}): Promise<FetchFeed
 
   return {
     posts: feedPosts,
-    nextCursor: posts.length === limit ? posts[posts.length - 1].created_at : null,
+    nextCursor: rawPosts.length === limit ? rawPosts[rawPosts.length - 1].created_at : null,
   };
 }
 
@@ -118,7 +126,7 @@ export async function createPost(input: {
 
   const profile = await supabase
     .from("profiles")
-    .select("id,username,full_name,bio,filiere,niveau,avatar_url")
+    .select("id,username,full_name,bio,filiere,niveau,avatar_url,notification_enabled,push_enabled,analytics_enabled")
     .eq("id", userId)
     .maybeSingle();
 
@@ -197,7 +205,7 @@ export async function fetchComments(postId: string) {
 
   const profilesRes = await supabase
     .from("profiles")
-    .select("id,username,full_name,bio,filiere,niveau,avatar_url")
+    .select("id,username,full_name,bio,filiere,niveau,avatar_url,notification_enabled,push_enabled,analytics_enabled")
     .in("id", authorIds);
 
   if (profilesRes.error) throw profilesRes.error;

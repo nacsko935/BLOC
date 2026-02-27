@@ -10,12 +10,7 @@ export async function seedMockCourses(): Promise<void> {
       `SELECT COUNT(*) as count FROM courses`
     );
     
-    if (existing && existing.count > 0) {
-      console.log('Courses already seeded, skipping...');
-      return;
-    }
-    
-    console.log('Seeding mock courses...');
+    if (existing && existing.count > 0) return;
     
     // Insert courses
     for (const course of mockCourses) {
@@ -98,8 +93,7 @@ export async function seedMockCourses(): Promise<void> {
       );
     }
     
-    console.log('Mock courses seeded successfully!');
   } catch (error) {
-    console.error('Error seeding mock courses:', error);
+    throw error;
   }
 }

@@ -9,6 +9,7 @@ export default function QcmDetail() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [qcm, setQcm] = useState<any>(null);
+  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -39,12 +40,13 @@ export default function QcmDetail() {
             {["Transport fiable", "Routage", "Chiffrement"].map((a) => (
               <Pressable
                 key={a}
+                onPress={() => setSelectedAnswer(a)}
                 style={{
-                  backgroundColor: "#14151a",
+                  backgroundColor: selectedAnswer === a ? "#232B45" : "#14151a",
                   borderRadius: 12,
                   padding: 10,
                   borderWidth: 1,
-                  borderColor: "rgba(255,255,255,0.08)",
+                  borderColor: selectedAnswer === a ? "#4D6BFF" : "rgba(255,255,255,0.08)",
                 }}
               >
                 <Text style={{ color: "white" }}>{a}</Text>

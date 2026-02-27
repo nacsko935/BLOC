@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState } from "react";
-import { View, Text, Pressable } from "react-native";
+import { Alert, View, Text, Pressable } from "react-native";
 import * as Haptics from "expo-haptics";
 import Card from "../../core/ui/Card";
 import Chip from "../../core/ui/Chip";
@@ -153,7 +153,7 @@ export default function PostCard({ post }: { post: Post }) {
               <Text style={{ color: saved ? "#f5b21b" : "white" }}>🔖 {saves}</Text>
             </Pressable>
           </View>
-          <Pressable>
+          <Pressable onPress={() => Alert.alert("Partager", "Lien de publication copie (demo).")}>
             <Text style={{ color: "rgba(255,255,255,0.7)" }}>↗</Text>
           </Pressable>
         </View>

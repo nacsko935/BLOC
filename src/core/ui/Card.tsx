@@ -22,12 +22,12 @@ export default function Card({
       style={[
         {
           backgroundColor: theme.colors.surface,
-          borderRadius: theme.radius.lg,
+          borderRadius: 20,
           padding: 16,
           borderWidth: 1,
           borderColor: isOutlined ? theme.colors.borderStrong : theme.colors.border,
           shadowColor: "#000",
-          shadowOpacity: isElevated ? 0.32 : 0.2,
+          shadowOpacity: isElevated ? 0.25 : 0.16,
           shadowRadius: isElevated ? 14 : 8,
           shadowOffset: { width: 0, height: isElevated ? 8 : 4 },
           elevation: isElevated ? 7 : 3,

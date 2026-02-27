@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Animated, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, Animated, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import SegmentedTabs, { SegmentedItem } from "../../src/core/ui/SegmentedTabs";
 import { ProfileHeader } from "../../src/features/profile/components/ProfileHeader";
 import { ProfileStats } from "../../src/features/profile/components/ProfileStats";
 import { useAuthStore } from "../../state/useAuthStore";
+import { AppButton } from "../../src/core/ui/AppButton";
 
 type ProfileTab = "activite" | "contenus" | "groupes";
 
@@ -83,7 +84,7 @@ export default function ProfileTabRoute() {
           name={headerName}
           onEditPhoto={() => setEditVisible(true)}
           onSettings={() => router.push("/settings")}
-          onShare={() => {}}
+          onShare={() => Alert.alert("Partager", "Lien profil copie (demo).")}
         />
 
         <View style={styles.infoBlock}>
@@ -93,9 +94,7 @@ export default function ProfileTabRoute() {
           <ProfileStats followers={11} following={9} points={906} />
         </View>
 
-        <Pressable style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]} onPress={() => setEditVisible(true)}>
-          <Text style={styles.primaryButtonText}>Modifier le profil</Text>
-        </Pressable>
+        <AppButton style={styles.primaryButton} onPress={() => setEditVisible(true)}>Modifier le profil</AppButton>
 
         <Pressable style={({ pressed }) => [styles.composer, pressed && styles.pressed]} onPress={() => router.push("/create") }>
           <Text style={styles.composerText}>Quoi de neuf ?</Text>
@@ -121,8 +120,8 @@ export default function ProfileTabRoute() {
             <TextInput value={username} onChangeText={setUsername} placeholder="Username" placeholderTextColor="#888" style={styles.input} />
             <TextInput value={bio} onChangeText={setBio} placeholder="Bio" placeholderTextColor="#888" style={[styles.input, { minHeight: 78 }]} multiline />
             <View style={styles.actionsRow}>
-              <Pressable style={styles.secondaryAction} onPress={() => setEditVisible(false)}><Text style={styles.secondaryActionText}>Annuler</Text></Pressable>
-              <Pressable style={styles.primaryAction} onPress={handleSaveProfile}><Text style={styles.primaryActionText}>Enregistrer</Text></Pressable>
+              <AppButton variant="secondary" style={styles.secondaryAction} onPress={() => setEditVisible(false)}>Annuler</AppButton>
+              <AppButton style={styles.primaryAction} onPress={handleSaveProfile}>Enregistrer</AppButton>
             </View>
           </View>
         </View>

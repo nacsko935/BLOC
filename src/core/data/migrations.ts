@@ -159,22 +159,16 @@ export async function migrate() {
   // Add columns if they don't exist (for existing databases)
   try {
     await db.execAsync(`ALTER TABLE users ADD COLUMN account_type TEXT DEFAULT 'student';`);
-    console.log('✓ Column account_type added');
   } catch (error) {
-    console.log('✓ Column account_type already exists');
   }
   
   try {
     await db.execAsync(`ALTER TABLE users ADD COLUMN email TEXT;`);
-    console.log('✓ Column email added');
   } catch (error) {
-    console.log('✓ Column email already exists');
   }
   
   try {
     await db.execAsync(`ALTER TABLE users ADD COLUMN password TEXT;`);
-    console.log('✓ Column password added');
   } catch (error) {
-    console.log('✓ Column password already exists');
   }
 }

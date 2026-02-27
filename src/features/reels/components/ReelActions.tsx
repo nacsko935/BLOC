@@ -1,4 +1,4 @@
-﻿import { Animated, Pressable, View } from "react-native";
+import { Alert, Animated, Pressable, View } from "react-native";
 import { useRef, useState } from "react";
 import * as Haptics from "expo-haptics";
 import { AppText } from "../../../core/ui/AppText";
@@ -34,23 +34,30 @@ export function ReelActions({
     <View style={{ position: "absolute", right: 14, bottom: 150, gap: 24, alignItems: "center" }}>
       <Pressable onPress={animateLike} hitSlop={10}>
         <Animated.View style={{ transform: [{ scale }], alignItems: "center" }}>
-          <AppText style={{ fontSize: 32 }}>{liked ? "❤" : "♡"}</AppText>
+          <AppText style={{ fontSize: 26 }}>{liked ? "Like" : "Like+"}</AppText>
           <AppText variant="caption">{likesCount + (liked ? 1 : 0)}</AppText>
         </Animated.View>
       </Pressable>
 
       <Pressable onPress={onComments} hitSlop={10} style={{ alignItems: "center" }}>
-        <AppText style={{ fontSize: 30 }}>💬</AppText>
+        <AppText style={{ fontSize: 26 }}>Com</AppText>
         <AppText variant="caption">{commentsCount}</AppText>
       </Pressable>
 
       <Pressable onPress={toggleSave} hitSlop={10} style={{ alignItems: "center" }}>
-        <AppText style={{ fontSize: 30 }}>{saved ? "🔖" : "📑"}</AppText>
+        <AppText style={{ fontSize: 26 }}>{saved ? "Saved" : "Save"}</AppText>
         <AppText variant="caption">{saved ? "Saved" : "Save"}</AppText>
       </Pressable>
 
-      <Pressable onPress={() => Haptics.selectionAsync()} hitSlop={10} style={{ alignItems: "center" }}>
-        <AppText style={{ fontSize: 30 }}>↗</AppText>
+      <Pressable
+        onPress={() => {
+          Haptics.selectionAsync();
+          Alert.alert("Partager", "Partage reel active (demo).");
+        }}
+        hitSlop={10}
+        style={{ alignItems: "center" }}
+      >
+        <AppText style={{ fontSize: 26 }}>Share</AppText>
         <AppText variant="caption">Share</AppText>
       </Pressable>
     </View>

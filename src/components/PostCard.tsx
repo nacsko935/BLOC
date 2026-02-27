@@ -1,5 +1,8 @@
+import { memo, useRef } from "react";
 import { Ionicons } from "@expo/vector-icons";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert } from "react-native";
+import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
+import * as Haptics from "expo-haptics";
 import { colors } from "../../constants/colors";
 import { FeedPost } from "../../types/db";
 
@@ -9,12 +12,37 @@ type PostCardProps = {
   onToggleSave: (postId: string) => void;
   onPressComments: (post: FeedPost) => void;
   onPressContent: (post: FeedPost) => void;
+  onPressMore: (post: FeedPost) => void;
+  onPressFollow?: (post: FeedPost) => void;
+  onPressShare?: (post: FeedPost) => void;
 };
 
-export function PostCard({ post, onToggleLike, onToggleSave, onPressComments, onPressContent }: PostCardProps) {
+function formatRelativeDate(input: string) {
+  const date = new Date(input);
+  const deltaSec = Math.max(1, Math.floor((Date.now() - date.getTime()) / 1000));
+  if (deltaSec < 60) return "a l'instant";
+  const minutes = Math.floor(deltaSec / 60);
+  if (minutes < 60) return `il y a ${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `il y a ${hours} h`;
+  const days = Math.floor(hours / 24);
+  return days === 1 ? "il y a 1 jour" : `il y a ${days} jours`;
+}
+
+function PostCardComponent({ post, onToggleLike, onToggleSave, onPressComments, onPressContent, onPressMore, onPressFollow, onPressShare }: PostCardProps) {
   const authorName = post.author?.full_name || post.author?.username || "Utilisateur";
   const username = post.author?.username || "bloc";
   const role = post.author?.niveau || "ETUDIANT";
+  const likeScale = useRef(new Animated.Value(1)).current;
+
+  const handleLike = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => null);
+    Animated.sequence([
+      Animated.timing(likeScale, { toValue: 1.18, duration: 120, useNativeDriver: true }),
+      Animated.timing(likeScale, { toValue: 1, duration: 150, useNativeDriver: true }),
+    ]).start();
+    onToggleLike(post.id);
+  };
 
   return (
     <View style={styles.card}>
@@ -30,13 +58,23 @@ export function PostCard({ post, onToggleLike, onToggleSave, onPressComments, on
               <View style={[styles.rolePill, role.toLowerCase().includes("prof") ? styles.roleProf : styles.roleStudent]}>
                 <Text style={styles.roleText}>{role.toUpperCase()}</Text>
               </View>
-              <Text style={styles.time}>{new Date(post.created_at).toLocaleString()}</Text>
+              <Text style={styles.time}>{formatRelativeDate(post.created_at)}</Text>
             </View>
           </View>
         </View>
         <View style={styles.rightTopRow}>
-          <Pressable style={styles.followPill}><Text style={styles.followText}>Suivre</Text></Pressable>
-          <Pressable style={styles.iconTap}><Ionicons name="ellipsis-horizontal" size={16} color={colors.textMuted} /></Pressable>
+          <Pressable
+            style={styles.followPill}
+            onPress={() => {
+              if (onPressFollow) return onPressFollow(post);
+              Alert.alert("Suivre", `Tu suis maintenant @${username}.`);
+            }}
+          >
+            <Text style={styles.followText}>Suivre</Text>
+          </Pressable>
+          <Pressable style={styles.iconTap} onPress={() => onPressMore(post)}>
+            <Ionicons name="ellipsis-horizontal" size={16} color={colors.textMuted} />
+          </Pressable>
         </View>
       </View>
 
@@ -54,8 +92,10 @@ export function PostCard({ post, onToggleLike, onToggleSave, onPressComments, on
       ) : null}
 
       <View style={styles.actions}>
-        <Pressable style={styles.actionBtn} onPress={() => onToggleLike(post.id)}>
-          <Ionicons name={post.likedByMe ? "heart" : "heart-outline"} color={post.likedByMe ? "#FF5C7A" : colors.textMuted} size={18} />
+        <Pressable style={styles.actionBtn} onPress={handleLike}>
+          <Animated.View style={{ transform: [{ scale: likeScale }] }}>
+            <Ionicons name={post.likedByMe ? "heart" : "heart-outline"} color={post.likedByMe ? "#FF5C7A" : colors.textMuted} size={18} />
+          </Animated.View>
           <Text style={styles.actionText}>{post.likesCount}</Text>
         </Pressable>
         <Pressable style={styles.actionBtn} onPress={() => onPressComments(post)}>
@@ -66,7 +106,13 @@ export function PostCard({ post, onToggleLike, onToggleSave, onPressComments, on
           <Ionicons name={post.savedByMe ? "bookmark" : "bookmark-outline"} color={post.savedByMe ? colors.accentAlt : colors.textMuted} size={18} />
           <Text style={styles.actionText}>{post.savesCount}</Text>
         </Pressable>
-        <Pressable style={styles.actionBtn}>
+        <Pressable
+          style={styles.actionBtn}
+          onPress={() => {
+            if (onPressShare) return onPressShare(post);
+            Alert.alert("Partager", "Lien de publication copie (demo).");
+          }}
+        >
           <Ionicons name="share-social-outline" color={colors.textMuted} size={18} />
           <Text style={styles.actionText}>Partager</Text>
         </Pressable>
@@ -75,13 +121,15 @@ export function PostCard({ post, onToggleLike, onToggleSave, onPressComments, on
   );
 }
 
+export const PostCard = memo(PostCardComponent);
+
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 20,
-    padding: 14,
+    borderRadius: 22,
+    padding: 16,
     marginBottom: 12,
   },
   topRow: { flexDirection: "row", justifyContent: "space-between", gap: 8 },
@@ -117,8 +165,8 @@ const styles = StyleSheet.create({
   },
   followText: { color: colors.text, fontSize: 11, fontWeight: "700" },
   iconTap: { width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center" },
-  title: { color: colors.text, marginTop: 12, fontSize: 16, fontWeight: "700" },
-  content: { marginTop: 6, color: "#D0D0D0", lineHeight: 20 },
+  title: { color: colors.text, marginTop: 12, fontSize: 17, fontWeight: "800" },
+  content: { marginTop: 6, color: "#CECED8", lineHeight: 20 },
   embed: {
     marginTop: 10,
     backgroundColor: colors.cardAlt,

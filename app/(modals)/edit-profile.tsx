@@ -44,18 +44,7 @@ export default function EditProfileModal() {
         .map((s) => s.trim())
         .filter(Boolean);
 
-      console.log({
-        name,
-        bio,
-        school,
-        level,
-        campus,
-        specialization,
-        linkedin,
-        github,
-        website,
-        skills: skillsList,
-      });
+      void skillsList;
 
       Alert.alert("Succès", "Profil mis à jour !", [
         { text: "OK", onPress: () => router.back() },

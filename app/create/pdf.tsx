@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Alert, Pressable, ScrollView } from "react-native";
+import { Alert, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
 import * as DocumentPicker from "expo-document-picker";
 import Screen from "../../src/core/ui/Screen";
@@ -23,14 +23,13 @@ export default function CreatePdfScreen() {
     <Screen>
       <ScrollView contentContainerStyle={{ gap: 14 }}>
         <AppHeader title="Importer PDF" subtitle="Ajoute ton document puis genere avec IA" rightLabel="Fermer" onRightPress={() => router.back()} />
-        <Pressable onPress={pickFile}>
-          <Card>
-            <AppText style={{ fontWeight: "800" }}>Selectionner un fichier</AppText>
-            <AppText muted variant="caption" style={{ marginTop: 6 }}>
-              {fileName ?? "Aucun fichier selectionne"}
-            </AppText>
-          </Card>
-        </Pressable>
+        <AppButton variant="secondary" onPress={pickFile}>Selectionner un fichier</AppButton>
+        <Card>
+          <AppText style={{ fontWeight: "800" }}>Fichier</AppText>
+          <AppText muted variant="caption" style={{ marginTop: 6 }}>
+            {fileName ?? "Aucun fichier selectionne"}
+          </AppText>
+        </Card>
         <Card>
           <AppText variant="caption" muted>
             Metadata

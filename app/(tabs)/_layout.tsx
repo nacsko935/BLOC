@@ -1,15 +1,13 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Tabs, useRouter } from "expo-router";
 import { Platform, Pressable, View } from "react-native";
 import { BlurView } from "expo-blur";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { CreateBottomSheet, CreateActionKey } from "../../src/components/CreateBottomSheet";
 import { useAuthStore } from "../../state/useAuthStore";
 
 export default function TabsLayout() {
   const router = useRouter();
-  const [sheetOpen, setSheetOpen] = useState(false);
   const { initAuth, loading, session } = useAuthStore();
 
   useEffect(() => {
@@ -23,19 +21,6 @@ export default function TabsLayout() {
       router.replace("/(auth)/login");
     }
   }, [loading, session, router]);
-
-  const onOpenCreate = useCallback(() => setSheetOpen(true), []);
-  const onCloseCreate = useCallback(() => setSheetOpen(false), []);
-  const onCreateAction = useCallback(
-    (action: CreateActionKey) => {
-      setSheetOpen(false);
-      if (action === "post") router.push("/create");
-      if (action === "pdf") router.push("/create/pdf");
-      if (action === "qcm") router.push("/create/qcm");
-      if (action === "group") router.push("/messages");
-    },
-    [router]
-  );
 
   return (
     <View style={{ flex: 1 }}>
@@ -116,7 +101,7 @@ export default function TabsLayout() {
                 accessibilityLabel="Creer"
                 onPress={async () => {
                   await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                  onOpenCreate();
+                  router.push("/(learning)");
                 }}
                 style={{
                   width: 62,
@@ -170,9 +155,8 @@ export default function TabsLayout() {
 
         <Tabs.Screen name="reels" options={{ href: null }} />
         <Tabs.Screen name="search" options={{ href: null }} />
+        <Tabs.Screen name="plan" options={{ href: null }} />
       </Tabs>
-
-      <CreateBottomSheet visible={sheetOpen} onClose={onCloseCreate} onActionPress={onCreateAction} />
     </View>
   );
 }

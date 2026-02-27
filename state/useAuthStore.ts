@@ -9,6 +9,8 @@ import {
 } from "../lib/services/authService";
 import { getMyProfile, upsertMyProfile } from "../lib/services/profileService";
 import { Profile } from "../types/db";
+import { registerPushToken, disablePushTokens } from "../lib/notifications";
+import { track } from "../lib/services/analyticsService";
 
 type AuthState = {
   session: Session | null;
@@ -41,11 +43,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const profile = user ? await getMyProfile().catch(() => null) : null;
       set({ session, user, profile, loading: false, initialized: true });
 
+      if (user && ((profile?.push_enabled ?? profile?.notification_enabled) ?? true)) {
+        registerPushToken(user.id).catch(() => null);
+      }
+
       if (!unsubscribeAuth) {
         unsubscribeAuth = onAuthStateChange(async (nextSession) => {
           const nextUser = nextSession?.user ?? null;
           const nextProfile = nextUser ? await getMyProfile().catch(() => null) : null;
           set({ session: nextSession, user: nextUser, profile: nextProfile, loading: false, initialized: true });
+
+          if (nextUser && ((nextProfile?.push_enabled ?? nextProfile?.notification_enabled) ?? true)) {
+            registerPushToken(nextUser.id).catch(() => null);
+          }
         });
       }
     } catch {
@@ -65,6 +75,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const user = session?.user ?? null;
       const profile = user ? await getMyProfile().catch(() => null) : null;
       set({ session, user, profile, loading: false, initialized: true });
+
+      if (user && ((profile?.push_enabled ?? profile?.notification_enabled) ?? true)) {
+        registerPushToken(user.id).catch(() => null);
+      }
+
+      track("auth_signin", { method: "password" }).catch(() => null);
     } catch (error) {
       set({ loading: false });
       throw error;
@@ -72,6 +88,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   signOut: async () => {
+    const userId = get().user?.id;
+    if (userId) {
+      disablePushTokens(userId).catch(() => null);
+    }
     await signOutService();
     set({ session: null, user: null, profile: null, loading: false, initialized: true });
   },
@@ -79,5 +99,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   updateProfile: async (patch) => {
     const profile = await upsertMyProfile(patch);
     set({ profile });
+
+    const userId = get().user?.id;
+    const pushSwitch = patch.push_enabled ?? patch.notification_enabled;
+    if (userId && pushSwitch !== undefined) {
+      if (pushSwitch) {
+        registerPushToken(userId).catch(() => null);
+      } else {
+        disablePushTokens(userId).catch(() => null);
+      }
+    }
   },
 }));

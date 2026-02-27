@@ -86,7 +86,7 @@ export default function CreateReelModal() {
         setMediaType(asset.mimeType?.startsWith("video") ? "video" : "image");
       }
     } catch (error) {
-      console.log("Error picking document:", error);
+      Alert.alert("Erreur", "Impossible de selectionner ce fichier.");
     }
   };
 
@@ -114,12 +114,7 @@ export default function CreateReelModal() {
         .map((t) => t.substring(1));
 
       // En production: Créer le reel dans la DB
-      console.log({
-        mediaUri,
-        mediaType,
-        caption,
-        tags: tagsList,
-      });
+      void tagsList;
 
       Alert.alert("Succès", "Votre reel a été publié !", [
         { text: "OK", onPress: () => router.back() },

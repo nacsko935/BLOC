@@ -2,9 +2,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors } from "../../constants/colors";
+import IconButton from "../core/ui/IconButton";
 
 type HomeHeaderProps = {
   notificationCount: number;
+  avatarLabel?: string;
   onPressBoost: () => void;
   onPressFavorites: () => void;
   onPressNotifications: () => void;
@@ -13,6 +15,7 @@ type HomeHeaderProps = {
 
 export function HomeHeader({
   notificationCount,
+  avatarLabel = "B",
   onPressBoost,
   onPressFavorites,
   onPressNotifications,
@@ -24,7 +27,7 @@ export function HomeHeader({
     <View style={[styles.wrapper, { paddingTop: insets.top + 8 }]}> 
       <View style={styles.leftRow}>
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>Y</Text>
+          <Text style={styles.avatarText}>{avatarLabel.slice(0, 1).toUpperCase()}</Text>
         </View>
         <Pressable onPress={onPressTitle} style={styles.titleRow}>
           <Text style={styles.title}>Accueil</Text>
@@ -34,21 +37,16 @@ export function HomeHeader({
 
       <View style={styles.rightRow}>
         <Pressable onPress={onPressBoost} style={styles.boostButton}>
-          <Text style={styles.boostText}>Boost</Text>
+          <Text style={styles.boostText}>Premium</Text>
         </Pressable>
 
-        <Pressable onPress={onPressFavorites} style={styles.iconButton}>
-          <Ionicons name="star-outline" size={18} color={colors.text} />
-        </Pressable>
+        <IconButton onPress={onPressFavorites}>
+          <Ionicons name="search-outline" size={18} color={colors.text} />
+        </IconButton>
 
-        <Pressable onPress={onPressNotifications} style={styles.iconButton}>
+        <IconButton onPress={onPressNotifications} badgeCount={notificationCount}>
           <Ionicons name="notifications-outline" size={18} color={colors.text} />
-          {notificationCount > 0 ? (
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{notificationCount > 99 ? "99+" : notificationCount}</Text>
-            </View>
-          ) : null}
-        </Pressable>
+        </IconButton>
       </View>
     </View>
   );
@@ -56,10 +54,10 @@ export function HomeHeader({
 
 const styles = StyleSheet.create({
   wrapper: {
-    backgroundColor: "rgba(0,0,0,0.94)",
+    backgroundColor: "#000",
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
-    paddingBottom: 10,
+    paddingBottom: 12,
     paddingHorizontal: 16,
     flexDirection: "row",
     alignItems: "center",
@@ -71,9 +69,9 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   avatar: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: colors.cardAlt,
     alignItems: "center",
     justifyContent: "center",
@@ -91,8 +89,8 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.text,
-    fontSize: 22,
-    fontWeight: "700",
+    fontSize: 24,
+    fontWeight: "800",
   },
   rightRow: {
     flexDirection: "row",
@@ -101,8 +99,8 @@ const styles = StyleSheet.create({
   },
   boostButton: {
     paddingHorizontal: 12,
-    height: 32,
-    borderRadius: 16,
+    height: 34,
+    borderRadius: 17,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.accent,
@@ -111,32 +109,5 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontWeight: "700",
     fontSize: 12,
-  },
-  iconButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.cardAlt,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  badge: {
-    position: "absolute",
-    right: -5,
-    top: -6,
-    minWidth: 16,
-    height: 16,
-    borderRadius: 8,
-    paddingHorizontal: 3,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.danger,
-  },
-  badgeText: {
-    color: colors.text,
-    fontSize: 9,
-    fontWeight: "700",
   },
 });

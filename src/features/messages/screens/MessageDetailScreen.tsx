@@ -1,5 +1,6 @@
 import React, { memo, useEffect, useMemo, useRef, useState } from "react";
 import {
+  Alert,
   View,
   FlatList,
   TextInput,
@@ -159,7 +160,10 @@ export default function ConversationScreen() {
             <AppText style={styles.headerName}>{display.name}</AppText>
             <AppText style={styles.headerSubtitle}>{display.subtitle}</AppText>
           </View>
-          <Pressable style={({ pressed }) => [styles.circleButton, pressed && styles.buttonPressed]}>
+          <Pressable
+            onPress={() => Alert.alert("Infos", "Options de conversation disponibles bientot.")}
+            style={({ pressed }) => [styles.circleButton, pressed && styles.buttonPressed]}
+          >
             <AppText style={{ fontSize: 18 }}>?</AppText>
           </Pressable>
         </View>

@@ -158,8 +158,11 @@ export default function ReelCommentsModal() {
               </Text>
             </Pressable>
             
-            <Pressable style={styles.commentAction}>
-              <Text style={styles.commentActionText}>Répondre</Text>
+            <Pressable
+              style={styles.commentAction}
+              onPress={() => setNewComment(`@${item.authorHandle.replace("@", "")} `)}
+            >
+              <Text style={styles.commentActionText}>Repondre</Text>
             </Pressable>
           </View>
         </View>
@@ -402,3 +405,4 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
 });
+

@@ -3,16 +3,19 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
+  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { MessageBubble } from "../../../src/features/messages/v1/components/MessageBubble";
-import { GroupChatMessage, groupMessagesById, initialWorkGroups } from "../../../src/features/messages/v1/mock";
+import { useMessagesStore } from "../../../state/useMessagesStore";
+import { useAuthStore } from "../../../state/useAuthStore";
+import { AppButton } from "../../../src/core/ui/AppButton";
+import * as Haptics from "expo-haptics";
 
 function getStringParam(value: string | string[] | undefined): string {
   if (Array.isArray(value)) return value[0] ?? "";
@@ -21,57 +24,73 @@ function getStringParam(value: string | string[] | undefined): string {
 
 export default function GroupChatScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ id?: string | string[]; name?: string | string[]; members?: string | string[] }>();
+  const params = useLocalSearchParams<{ id?: string | string[] }>();
   const groupId = getStringParam(params.id);
-  const groupNameParam = getStringParam(params.name);
-  const membersParam = getStringParam(params.members);
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<GroupChatMessage[]>([]);
-  const listRef = useRef<FlatList<GroupChatMessage>>(null);
+  const [sending, setSending] = useState(false);
+  const listRef = useRef<FlatList<any>>(null);
 
-  const groupMeta = useMemo(() => initialWorkGroups.find((group) => group.groupId === groupId), [groupId]);
-  const groupName = groupNameParam || groupMeta?.name || "Groupe";
-  const memberCount = Number(membersParam || groupMeta?.memberCount || 0);
+  const { user } = useAuthStore();
+  const { groups, messagesByConversation, openConversation, sendMessage, subscribeConversation, markRead, loadingMessages, leaveGroup } = useMessagesStore();
+
+  const messages = messagesByConversation[groupId] || [];
+  const groupMeta = useMemo(() => groups.find((group) => group.groupId === groupId), [groups, groupId]);
+  const groupName = groupMeta?.name || "Groupe";
+  const memberCount = groupMeta?.memberCount || 0;
 
   useEffect(() => {
-    setMessages(groupMessagesById[groupId] || []);
-  }, [groupId]);
+    if (!groupId) return;
+    openConversation(groupId).catch(() => null);
+    markRead(groupId).catch(() => null);
+    const unsubscribe = subscribeConversation(groupId);
+    return unsubscribe;
+  }, [groupId, openConversation, subscribeConversation, markRead]);
 
   useEffect(() => {
     const timer = setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 40);
     return () => clearTimeout(timer);
   }, [messages.length]);
 
-  const send = () => {
+  const send = async () => {
     const text = input.trim();
-    if (!text) return;
-
-    const now = new Date();
-    const timestamp = now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-    const next: GroupChatMessage = {
-      id: `g-local-${Date.now()}`,
-      senderId: "me",
-      senderName: "Moi",
-      text,
-      timestamp,
-    };
-
-    setMessages((prev) => [...prev, next]);
-    setInput("");
+    if (!text || !groupId || sending) return;
+    try {
+      setSending(true);
+      await sendMessage(groupId, text);
+      Haptics.selectionAsync().catch(() => null);
+      setInput("");
+    } catch (error: any) {
+      Alert.alert("Erreur", error?.message || "Impossible d'envoyer");
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
     <View style={styles.container}>
       <KeyboardAvoidingView style={styles.keyboard} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <View style={styles.header}>
-          <Pressable onPress={() => router.back()} style={({ pressed }) => [styles.headerButton, pressed && styles.pressed]}>
+          <AppButton variant="secondary" onPress={() => router.back()} style={styles.headerButton}>
             <Ionicons name="chevron-back" size={20} color="#F5F5F5" />
-          </Pressable>
+          </AppButton>
           <View style={styles.headerCenter}>
             <Text style={styles.headerTitle}>{groupName}</Text>
             <Text style={styles.headerSubtitle}>{memberCount} membres</Text>
           </View>
-          <View style={styles.headerSpacer} />
+          <AppButton
+            onPress={async () => {
+              try {
+                await leaveGroup(groupId);
+                router.back();
+              } catch (error: any) {
+                Alert.alert("Erreur", error?.message || "Impossible de quitter le groupe");
+              }
+            }}
+            variant="secondary"
+            style={styles.headerButton}
+          >
+            <Ionicons name="exit-outline" size={16} color="#F5F5F5" />
+          </AppButton>
         </View>
 
         <FlatList
@@ -82,13 +101,16 @@ export default function GroupChatScreen() {
             <MessageBubble
               text={item.text}
               timestamp={item.timestamp}
-              isMe={item.senderId === "me"}
+              isMe={item.senderId === user?.id}
               senderName={item.senderName}
               showSender
             />
           )}
           contentContainerStyle={styles.messagesContent}
           showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            loadingMessages ? <Text style={styles.empty}>Chargement...</Text> : <Text style={styles.empty}>Aucun message</Text>
+          }
         />
 
         <View style={styles.composer}>
@@ -100,13 +122,9 @@ export default function GroupChatScreen() {
             style={styles.input}
             multiline
           />
-          <Pressable
-            onPress={send}
-            style={({ pressed }) => [styles.sendButton, !input.trim() && styles.sendButtonDisabled, pressed && styles.pressed]}
-            disabled={!input.trim()}
-          >
-            <Text style={styles.sendButtonText}>Envoyer</Text>
-          </Pressable>
+          <AppButton loading={sending} onPress={send} style={[styles.sendButton, !input.trim() && styles.sendButtonDisabled]} disabled={!input.trim() || sending}>
+            Envoyer
+          </AppButton>
         </View>
       </KeyboardAvoidingView>
     </View>
@@ -114,13 +132,8 @@ export default function GroupChatScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#000000",
-  },
-  keyboard: {
-    flex: 1,
-  },
+  container: { flex: 1, backgroundColor: "#000000" },
+  keyboard: { flex: 1 },
   header: {
     paddingTop: 56,
     paddingHorizontal: 16,
@@ -138,29 +151,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  headerCenter: {
-    flex: 1,
-    alignItems: "center",
-  },
-  headerTitle: {
-    color: "#F5F5F5",
-    fontSize: 18,
-    fontWeight: "700",
-  },
-  headerSubtitle: {
-    color: "#8F8F99",
-    fontSize: 12,
-    marginTop: 2,
-  },
-  headerSpacer: {
-    width: 34,
-  },
-  messagesContent: {
-    paddingHorizontal: 12,
-    paddingVertical: 14,
-    gap: 8,
-    paddingBottom: 22,
-  },
+  headerCenter: { flex: 1, alignItems: "center" },
+  headerTitle: { color: "#F5F5F5", fontSize: 18, fontWeight: "700" },
+  headerSubtitle: { color: "#8F8F99", fontSize: 12, marginTop: 2 },
+  messagesContent: { paddingHorizontal: 12, paddingVertical: 14, gap: 8, paddingBottom: 22 },
+  empty: { color: "#8F8F99", textAlign: "center", marginTop: 20 },
   composer: {
     flexDirection: "row",
     alignItems: "flex-end",
@@ -191,15 +186,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "#654BFF",
   },
-  sendButtonDisabled: {
-    opacity: 0.45,
-  },
-  sendButtonText: {
-    color: "#FFFFFF",
-    fontWeight: "700",
-    fontSize: 13,
-  },
-  pressed: {
-    opacity: 0.82,
-  },
+  sendButtonDisabled: { opacity: 0.45 },
+  sendButtonText: { color: "#FFFFFF", fontWeight: "700", fontSize: 13 },
 });

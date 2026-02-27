@@ -1,11 +1,17 @@
+import { memo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { ConversationPreview } from "../mock";
 
-type Props = ConversationPreview & {
+type Props = {
+  id: string;
+  name: string;
+  lastMessage: string;
+  timestamp: string;
+  unreadCount: number;
+  avatar: string;
   onPress: (id: string) => void;
 };
 
-export function ConversationItem({ id, name, lastMessage, timestamp, unreadCount, avatar, onPress }: Props) {
+function ConversationItemComponent({ id, name, lastMessage, timestamp, unreadCount, avatar, onPress }: Props) {
   return (
     <Pressable style={({ pressed }) => [styles.row, pressed && styles.rowPressed]} onPress={() => onPress(id)}>
       <View style={styles.avatar}>
@@ -32,19 +38,19 @@ export function ConversationItem({ id, name, lastMessage, timestamp, unreadCount
   );
 }
 
+export const ConversationItem = memo(ConversationItemComponent);
+
 const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#121216",
-    borderRadius: 16,
-    padding: 12,
+    backgroundColor: "#111111",
+    borderRadius: 20,
+    padding: 14,
     borderWidth: 1,
-    borderColor: "#1E1E25",
+    borderColor: "#222222",
   },
-  rowPressed: {
-    opacity: 0.85,
-  },
+  rowPressed: { opacity: 0.9, transform: [{ scale: 0.99 }] },
   avatar: {
     width: 48,
     height: 48,
@@ -54,40 +60,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginRight: 12,
   },
-  avatarText: {
-    color: "#FFFFFF",
-    fontWeight: "700",
-    fontSize: 14,
-  },
-  content: {
-    flex: 1,
-    gap: 5,
-  },
-  topLine: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  bottomLine: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 8,
-  },
-  name: {
-    color: "#F5F5F5",
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  timestamp: {
-    color: "#9A9AA0",
-    fontSize: 12,
-  },
-  lastMessage: {
-    flex: 1,
-    color: "#9A9AA0",
-    fontSize: 13,
-  },
+  avatarText: { color: "#FFFFFF", fontWeight: "700", fontSize: 14 },
+  content: { flex: 1, gap: 5 },
+  topLine: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  bottomLine: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8 },
+  name: { color: "#F5F5F5", fontSize: 15, fontWeight: "700" },
+  timestamp: { color: "#9A9A9A", fontSize: 12 },
+  lastMessage: { flex: 1, color: "#9A9A9A", fontSize: 13 },
   badge: {
     minWidth: 20,
     height: 20,
@@ -97,9 +76,5 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 6,
   },
-  badgeText: {
-    color: "#FFFFFF",
-    fontSize: 11,
-    fontWeight: "800",
-  },
+  badgeText: { color: "#FFFFFF", fontSize: 11, fontWeight: "800" },
 });

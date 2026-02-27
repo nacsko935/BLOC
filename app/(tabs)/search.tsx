@@ -1,182 +1,141 @@
 import { useMemo, useState } from "react";
-import { View, Text, TextInput, ScrollView, Pressable } from "react-native";
+import { View, Text, TextInput, ScrollView, Pressable, ActivityIndicator, StyleSheet } from "react-native";
+import { useRouter } from "expo-router";
 import Screen from "../../src/core/ui/Screen";
 import SegmentedTabs from "../../src/core/ui/SegmentedTabs";
 import Card from "../../src/core/ui/Card";
-import Chip from "../../src/core/ui/Chip";
-import { searchMock } from "../../src/features/search/mock";
+import IconButton from "../../src/core/ui/IconButton";
+import { Ionicons } from "@expo/vector-icons";
+import { searchGroups, searchPosts, searchUsers } from "../../lib/services/searchService";
 
 const tabs = [
+  { key: "users", label: "Utilisateurs" },
+  { key: "groups", label: "Groupes" },
   { key: "posts", label: "Posts" },
-  { key: "actus", label: "Actus" },
-  { key: "personnes", label: "Personnes" },
-  { key: "profs", label: "Professeurs" },
-  { key: "perso", label: "Personnalites" },
-];
-
-const filters = ["Pertinence", "Date", "Popularite", "Campus", "Matiere"];
+] as const;
 
 export default function Search() {
-  const [tab, setTab] = useState("posts");
+  const router = useRouter();
+  const [tab, setTab] = useState<(typeof tabs)[number]["key"]>("users");
   const [q, setQ] = useState("");
-  const [activeFilter, setActiveFilter] = useState("Pertinence");
-  const normalizedQuery = q.trim().toLowerCase();
+  const [loading, setLoading] = useState(false);
+  const [users, setUsers] = useState<any[]>([]);
+  const [groups, setGroups] = useState<any[]>([]);
+  const [posts, setPosts] = useState<any[]>([]);
 
-  const filteredPeople = useMemo(() => {
-    let items = [...searchMock.people];
+  const hasQuery = q.trim().length > 0;
 
-    if (normalizedQuery) {
-      items = items.filter((p) =>
-        `${p.name} ${p.handle} ${p.campus}`.toLowerCase().includes(normalizedQuery)
-      );
+  const runSearch = async (value: string, currentTab: typeof tab) => {
+    const query = value.trim();
+    if (!query) {
+      setUsers([]);
+      setGroups([]);
+      setPosts([]);
+      return;
     }
 
-    if (activeFilter === "Popularite") {
-      items.sort((a, b) => b.level - a.level);
+    setLoading(true);
+    try {
+      if (currentTab === "users") setUsers(await searchUsers(query));
+      if (currentTab === "groups") setGroups(await searchGroups(query));
+      if (currentTab === "posts") setPosts(await searchPosts(query));
+    } finally {
+      setLoading(false);
     }
+  };
 
-    return items;
-  }, [activeFilter, normalizedQuery]);
-
-  const filteredPosts = useMemo(() => {
-    let items = [...searchMock.posts];
-
-    if (normalizedQuery) {
-      items = items.filter((post) =>
-        `${post.title} ${post.content} ${post.tags.join(" ")}`
-          .toLowerCase()
-          .includes(normalizedQuery)
-      );
-    }
-
-    if (activeFilter === "Popularite") {
-      items.sort((a, b) => b.stats.likes - a.stats.likes);
-    }
-
-    return items;
-  }, [activeFilter, normalizedQuery]);
-
-  const isPeopleTab = tab === "personnes" || tab === "profs" || tab === "perso";
-  const resultCount = isPeopleTab ? filteredPeople.length : filteredPosts.length;
+  const resultCount = useMemo(() => {
+    if (tab === "users") return users.length;
+    if (tab === "groups") return groups.length;
+    return posts.length;
+  }, [tab, users.length, groups.length, posts.length]);
 
   return (
     <Screen>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-          <Text style={{ color: "white", fontSize: 30, fontWeight: "800" }}>Recherche</Text>
-          <Text style={{ color: "rgba(255,255,255,0.6)" }}>Filtrer</Text>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+        <View style={styles.headerRow}>
+          <Text style={styles.title}>Recherche</Text>
+          <IconButton onPress={() => setQ("")}>
+            <Ionicons name="close-outline" size={20} color="#fff" />
+          </IconButton>
         </View>
 
-        <TextInput
-          value={q}
-          onChangeText={setQ}
-          placeholder="Rechercher posts, cours, QCM..."
-          placeholderTextColor="rgba(255,255,255,0.35)"
-          style={{
-            borderWidth: 1,
-            borderColor: "rgba(255,255,255,0.12)",
-            backgroundColor: "#14151a",
-            color: "white",
-            borderRadius: 14,
-            padding: 12,
-            marginBottom: 12,
+        <View style={styles.inputWrap}>
+          <Ionicons name="search-outline" size={18} color="#9A9A9A" />
+          <TextInput
+            value={q}
+            onChangeText={(value) => {
+              setQ(value);
+              runSearch(value, tab).catch(() => null);
+            }}
+            placeholder="Rechercher utilisateurs, groupes, posts..."
+            placeholderTextColor="#9A9A9A"
+            style={styles.input}
+          />
+        </View>
+        <Text style={styles.count}>{resultCount} resultat(s)</Text>
+
+        <SegmentedTabs
+          items={tabs as any}
+          value={tab}
+          onChange={(next: any) => {
+            setTab(next);
+            runSearch(q, next).catch(() => null);
           }}
         />
 
-        <SegmentedTabs items={tabs} value={tab} onChange={setTab} />
+        <View style={styles.results}>
+          {loading ? <ActivityIndicator color="#fff" /> : null}
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }}>
-          <View style={{ flexDirection: "row", gap: 8 }}>
-            {filters.map((f) => (
-              <Pressable key={f} onPress={() => setActiveFilter(f)}>
-                <Chip label={f} active={activeFilter === f} />
-              </Pressable>
-            ))}
-          </View>
-        </ScrollView>
-
-        <View style={{ marginTop: 14, gap: 10 }}>
-          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-            <Text style={{ color: "rgba(255,255,255,0.7)", fontWeight: "700" }}>Tendances</Text>
-            <Text style={{ color: "rgba(255,255,255,0.55)" }}>{resultCount} resultat(s)</Text>
-          </View>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-            {["#qcm", "#reseaux", "#maths", "#pomodoro", "#exam"].map((t) => (
-              <Chip key={t} label={t} />
-            ))}
-          </View>
-        </View>
-
-        <View style={{ gap: 12, marginTop: 16 }}>
-          {isPeopleTab ? (
-            filteredPeople.length === 0 ? (
-              <Card>
-                <Text style={{ color: "white", fontWeight: "800" }}>Aucun resultat</Text>
-                <Text style={{ color: "rgba(255,255,255,0.6)", marginTop: 6 }}>
-                  Essaie un autre mot-cle.
-                </Text>
-              </Card>
-            ) : (
-              filteredPeople.map((p) => (
-                <Card key={p.id}>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-                    <View
-                      style={{
-                        width: 44,
-                        height: 44,
-                        borderRadius: 22,
-                        backgroundColor: "#2a2f3a",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <Text style={{ color: "white", fontWeight: "800" }}>{p.name[0]}</Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ color: "white", fontWeight: "800" }}>{p.name}</Text>
-                      <Text style={{ color: "rgba(255,255,255,0.6)", marginTop: 4 }}>
-                        {p.handle} · {p.campus}
-                      </Text>
-                      <Text style={{ color: "rgba(255,255,255,0.6)", marginTop: 6 }}>Niveau {p.level}</Text>
-                    </View>
-                    <Pressable
-                      style={{
-                        backgroundColor: "white",
-                        paddingHorizontal: 12,
-                        paddingVertical: 6,
-                        borderRadius: 999,
-                      }}
-                    >
-                      <Text style={{ color: "#111217", fontWeight: "800" }}>Suivre</Text>
-                    </Pressable>
-                  </View>
-                </Card>
-              ))
-            )
-          ) : filteredPosts.length === 0 ? (
+          {!hasQuery ? (
             <Card>
-              <Text style={{ color: "white", fontWeight: "800" }}>Aucun resultat</Text>
+              <Text style={{ color: "white", fontWeight: "800" }}>Recherche</Text>
               <Text style={{ color: "rgba(255,255,255,0.6)", marginTop: 6 }}>
-                Essaie un autre mot-cle.
+                Suggestions: sql, react, bdd, alternance
               </Text>
             </Card>
-          ) : (
-            filteredPosts.map((post) => (
-              <Card key={post.id}>
-                <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                  <Text style={{ color: "rgba(255,255,255,0.6)", fontWeight: "700" }}>
-                    {post.type.toUpperCase()}
-                  </Text>
-                  <Text style={{ color: "rgba(255,255,255,0.55)" }}>{post.createdAt}</Text>
-                </View>
-                <Text style={{ color: "white", fontSize: 16, fontWeight: "800", marginTop: 6 }}>{post.title}</Text>
-                <Text style={{ color: "rgba(255,255,255,0.65)", marginTop: 6 }}>{post.content}</Text>
-                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
-                  {post.tags.map((t) => (
-                    <Chip key={t} label={`#${t}`} />
-                  ))}
-                </View>
+          ) : tab === "users" ? (
+            users.length === 0 ? (
+              <Card>
+                <Text style={{ color: "white", fontWeight: "800" }}>Aucun utilisateur</Text>
               </Card>
+            ) : (
+              users.map((u) => (
+                <Pressable key={u.id} onPress={() => router.push("/(tabs)/profile") }>
+                  <Card>
+                    <Text style={styles.itemTitle}>{u.full_name || u.username || "Utilisateur"}</Text>
+                    <Text style={styles.itemSubtitle}>@{u.username || "bloc"}</Text>
+                  </Card>
+                </Pressable>
+              ))
+            )
+          ) : tab === "groups" ? (
+            groups.length === 0 ? (
+              <Card>
+                <Text style={{ color: "white", fontWeight: "800" }}>Aucun groupe</Text>
+              </Card>
+            ) : (
+              groups.map((g) => (
+                <Pressable key={g.id} onPress={() => router.push({ pathname: "/messages/group/[id]", params: { id: g.id } })}>
+                  <Card>
+                    <Text style={styles.itemTitle}>{g.title || "Groupe"}</Text>
+                    <Text style={styles.itemSubtitle}>{g.description || "Sans description"}</Text>
+                  </Card>
+                </Pressable>
+              ))
+            )
+          ) : posts.length === 0 ? (
+            <Card>
+              <Text style={{ color: "white", fontWeight: "800" }}>Aucun post</Text>
+            </Card>
+          ) : (
+            posts.map((p) => (
+              <Pressable key={p.id} onPress={() => router.push({ pathname: "/content/[id]", params: { id: p.id } })}>
+                <Card>
+                  <Text style={styles.itemTitle}>{p.title || "Post"}</Text>
+                  <Text style={[styles.itemSubtitle, { marginTop: 6 }]}>{p.content}</Text>
+                </Card>
+              </Pressable>
             ))
           )}
         </View>
@@ -184,3 +143,26 @@ export default function Search() {
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  content: { paddingTop: 56, paddingBottom: 120 },
+  headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 },
+  title: { color: "#fff", fontSize: 30, fontWeight: "800" },
+  inputWrap: {
+    minHeight: 48,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#222",
+    backgroundColor: "#111",
+    paddingHorizontal: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 8,
+  },
+  input: { flex: 1, color: "#fff", paddingVertical: 10 },
+  count: { color: "#9A9A9A", marginBottom: 12 },
+  results: { gap: 12, marginTop: 12 },
+  itemTitle: { color: "#fff", fontWeight: "800" },
+  itemSubtitle: { color: "#9A9A9A", marginTop: 4 },
+});

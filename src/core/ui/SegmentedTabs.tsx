@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { theme } from "./theme";
 
 export type SegmentedItem<T extends string = string> = { key: T; label: string };
 
@@ -30,25 +31,25 @@ export default function SegmentedTabs<T extends string>({ items, value, onChange
 const styles = StyleSheet.create({
   root: {
     flexDirection: "row",
-    backgroundColor: "#111115",
-    borderRadius: 12,
+    backgroundColor: theme.colors.surface,
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: "#202029",
+    borderColor: theme.colors.border,
     padding: 4,
     gap: 4,
   },
   item: {
     flex: 1,
-    height: 36,
-    borderRadius: 9,
+    height: 38,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
   },
   itemActive: {
-    backgroundColor: "#2B2670",
+    backgroundColor: theme.colors.accentSoft,
   },
   label: {
-    color: "#8E8E99",
+    color: theme.colors.textMuted,
     fontSize: 13,
     fontWeight: "700",
   },
@@ -56,6 +57,7 @@ const styles = StyleSheet.create({
     color: "#F2F1FF",
   },
   pressed: {
-    opacity: 0.85,
+    opacity: 0.9,
+    transform: [{ scale: 0.98 }],
   },
 });

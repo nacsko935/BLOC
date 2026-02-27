@@ -8,6 +8,7 @@ import {
   toggleLike,
   toggleSave,
 } from "../lib/services/postService";
+import { track } from "../lib/services/analyticsService";
 
 type FeedState = {
   posts: FeedPost[];
@@ -26,6 +27,10 @@ type FeedState = {
   openComments: (postId: string) => Promise<void>;
   addComment: (postId: string, content: string) => Promise<void>;
 };
+
+const likePending = new Set<string>();
+const savePending = new Set<string>();
+const commentPending = new Set<string>();
 
 export const useFeedStore = create<FeedState>((set, get) => ({
   posts: [],
@@ -66,36 +71,51 @@ export const useFeedStore = create<FeedState>((set, get) => ({
   createPost: async (input) => {
     const post = await createPostService(input);
     set((state) => ({ posts: [post, ...state.posts] }));
+    track("post_create", { post_id: post.id, type: post.type }).catch(() => null);
   },
 
   toggleLike: async (postId) => {
-    const liked = await toggleLike(postId);
-    set((state) => ({
-      posts: state.posts.map((post) =>
-        post.id === postId
-          ? {
-              ...post,
-              likedByMe: liked,
-              likesCount: liked ? post.likesCount + 1 : Math.max(0, post.likesCount - 1),
-            }
-          : post
-      ),
-    }));
+    if (likePending.has(postId)) return;
+    likePending.add(postId);
+    try {
+      const liked = await toggleLike(postId);
+      set((state) => ({
+        posts: state.posts.map((post) =>
+          post.id === postId
+            ? {
+                ...post,
+                likedByMe: liked,
+                likesCount: liked ? post.likesCount + 1 : Math.max(0, post.likesCount - 1),
+              }
+            : post
+        ),
+      }));
+      track("post_like", { post_id: postId, liked }).catch(() => null);
+    } finally {
+      likePending.delete(postId);
+    }
   },
 
   toggleSave: async (postId) => {
-    const saved = await toggleSave(postId);
-    set((state) => ({
-      posts: state.posts.map((post) =>
-        post.id === postId
-          ? {
-              ...post,
-              savedByMe: saved,
-              savesCount: saved ? post.savesCount + 1 : Math.max(0, post.savesCount - 1),
-            }
-          : post
-      ),
-    }));
+    if (savePending.has(postId)) return;
+    savePending.add(postId);
+    try {
+      const saved = await toggleSave(postId);
+      set((state) => ({
+        posts: state.posts.map((post) =>
+          post.id === postId
+            ? {
+                ...post,
+                savedByMe: saved,
+                savesCount: saved ? post.savesCount + 1 : Math.max(0, post.savesCount - 1),
+              }
+            : post
+        ),
+      }));
+      track("post_save", { post_id: postId, saved }).catch(() => null);
+    } finally {
+      savePending.delete(postId);
+    }
   },
 
   openComments: async (postId) => {
@@ -106,12 +126,19 @@ export const useFeedStore = create<FeedState>((set, get) => ({
 
   addComment: async (postId, content) => {
     if (!content.trim()) return;
-    const comments = await addCommentService(postId, content);
-    set((state) => ({
-      commentsByPost: { ...state.commentsByPost, [postId]: comments },
-      posts: state.posts.map((post) =>
-        post.id === postId ? { ...post, commentsCount: comments.length } : post
-      ),
-    }));
+    if (commentPending.has(postId)) return;
+    commentPending.add(postId);
+    try {
+      const comments = await addCommentService(postId, content);
+      set((state) => ({
+        commentsByPost: { ...state.commentsByPost, [postId]: comments },
+        posts: state.posts.map((post) =>
+          post.id === postId ? { ...post, commentsCount: comments.length } : post
+        ),
+      }));
+      track("comment_add", { post_id: postId }).catch(() => null);
+    } finally {
+      commentPending.delete(postId);
+    }
   },
 }));
