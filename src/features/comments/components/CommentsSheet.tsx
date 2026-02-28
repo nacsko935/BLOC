@@ -1,3 +1,4 @@
+import { useTheme } from "../../../core/theme/ThemeProvider";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, TextInput, View } from "react-native";
 import { AppText } from "../../../core/ui/AppText";
@@ -88,12 +89,12 @@ export function CommentsSheet({
           keyboardVerticalOffset={Platform.OS === "ios" ? 16 : 0}
         style={{
           maxHeight: "75%",
-          backgroundColor: theme.colors.bg,
+          backgroundColor: "#111111",
           borderTopLeftRadius: 20,
           borderTopRightRadius: 20,
           padding: 14,
           borderTopWidth: 1,
-          borderColor: theme.colors.border,
+          borderColor: "rgba(255,255,255,0.08)",
         }}
         >
           <AppText variant="subtitle">Commentaires</AppText>
@@ -113,16 +114,16 @@ export function CommentsSheet({
               value={text}
               onChangeText={setText}
               placeholder={replyTo ? `Repondre a @${replyTo.author}...` : "Ajouter un commentaire..."}
-              placeholderTextColor={theme.colors.textMuted}
+              placeholderTextColor={"rgba(255,255,255,0.45)"}
               style={{
                 flex: 1,
-                color: theme.colors.text,
+                color: "#ffffff",
                 borderWidth: 1,
-                borderColor: theme.colors.border,
+                borderColor: "rgba(255,255,255,0.08)",
                 borderRadius: 999,
                 paddingHorizontal: 14,
                 paddingVertical: 10,
-                backgroundColor: theme.colors.surface,
+                backgroundColor: "#16161b",
               }}
             />
             <AppButton onPress={submit}>Envoyer</AppButton>

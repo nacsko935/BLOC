@@ -5,13 +5,16 @@ import {
   InboxItem,
   createGroup,
   fetchConversationMessages,
+  fetchGroupMessages,
   fetchGroups,
   fetchInbox,
   joinGroup,
   leaveGroup,
   markConversationRead,
   sendMessage,
+  sendGroupMessage,
   subscribeToConversation,
+  subscribeToGroup,
 } from "../lib/services/messageService";
 import { track } from "../lib/services/analyticsService";
 
@@ -28,9 +31,12 @@ type MessagesState = {
   joinGroup: (groupId: string) => Promise<void>;
   leaveGroup: (groupId: string) => Promise<void>;
   openConversation: (conversationId: string) => Promise<void>;
+  openGroup: (groupId: string) => Promise<void>;
   sendMessage: (conversationId: string, text: string) => Promise<void>;
+  sendGroupMessage: (groupId: string, text: string) => Promise<void>;
   markRead: (conversationId: string) => Promise<void>;
   subscribeConversation: (conversationId: string) => () => void;
+  subscribeGroup: (groupId: string) => () => void;
 };
 
 const pendingSendMap = new Set<string>();
@@ -59,7 +65,7 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
       const groups = await fetchGroups();
       set({ groups, loading: false });
     } catch {
-      set({ loading: false, groups: [] });
+      set({ groups: [], loading: false });
     }
   },
 
@@ -71,34 +77,63 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
 
   joinGroup: async (groupId) => {
     await joinGroup(groupId);
-    await Promise.all([get().loadGroups(), get().loadInbox()]);
+    await get().loadGroups();
     track("group_join", { group_id: groupId }).catch(() => null);
   },
 
   leaveGroup: async (groupId) => {
     await leaveGroup(groupId);
-    await Promise.all([get().loadGroups(), get().loadInbox()]);
+    await get().loadGroups();
   },
 
   openConversation: async (conversationId) => {
     set({ loadingMessages: true, activeConversationId: conversationId });
-    const messages = await fetchConversationMessages(conversationId);
-    set((state) => ({
-      messagesByConversation: { ...state.messagesByConversation, [conversationId]: messages },
-      loadingMessages: false,
-    }));
+    try {
+      const messages = await fetchConversationMessages(conversationId);
+      set(state => ({
+        messagesByConversation: { ...state.messagesByConversation, [conversationId]: messages },
+        loadingMessages: false,
+      }));
+    } catch {
+      set({ loadingMessages: false });
+    }
+  },
+
+  openGroup: async (groupId) => {
+    set({ loadingMessages: true, activeConversationId: groupId });
+    try {
+      const messages = await fetchGroupMessages(groupId);
+      set(state => ({
+        messagesByConversation: { ...state.messagesByConversation, [groupId]: messages },
+        loadingMessages: false,
+      }));
+    } catch {
+      set({ loadingMessages: false });
+    }
   },
 
   sendMessage: async (conversationId, text) => {
-    const key = `${conversationId}:${text}`;
+    const key = `dm:${conversationId}:${text}`;
     if (pendingSendMap.has(key)) return;
     pendingSendMap.add(key);
     try {
       await sendMessage(conversationId, text);
       await get().openConversation(conversationId);
       await get().loadInbox();
-      await get().loadGroups();
       track("msg_send", { conversation_id: conversationId }).catch(() => null);
+    } finally {
+      pendingSendMap.delete(key);
+    }
+  },
+
+  sendGroupMessage: async (groupId, text) => {
+    const key = `group:${groupId}:${text}`;
+    if (pendingSendMap.has(key)) return;
+    pendingSendMap.add(key);
+    try {
+      await sendGroupMessage(groupId, text);
+      await get().openGroup(groupId);
+      track("group_msg_send", { group_id: groupId }).catch(() => null);
     } finally {
       pendingSendMap.delete(key);
     }
@@ -107,14 +142,18 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
   markRead: async (conversationId) => {
     await markConversationRead(conversationId);
     await get().loadInbox();
-    await get().loadGroups();
   },
 
   subscribeConversation: (conversationId) => {
     return subscribeToConversation(conversationId, async () => {
       await get().openConversation(conversationId);
       await get().loadInbox();
-      await get().loadGroups();
+    });
+  },
+
+  subscribeGroup: (groupId) => {
+    return subscribeToGroup(groupId, async () => {
+      await get().openGroup(groupId);
     });
   },
 }));

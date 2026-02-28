@@ -1,40 +1,17 @@
 import { useLocalSearchParams } from "expo-router";
-import { StyleSheet, Text, View } from "react-native";
-import { colors } from "../../constants/colors";
+import { Text, View } from "react-native";
+import { useTheme } from "../../src/core/theme/ThemeProvider";
 import { trendsMock } from "../../src/features/home/homeMock";
 
 export default function TrendDetailScreen() {
+  const { c } = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const trend = trendsMock.find((item) => item.id === id);
-
   return (
-    <View style={styles.screen}>
-      <Text style={styles.title}>{trend?.title ?? "Tendance"}</Text>
-      <Text style={styles.text}>Tag: {trend?.tag ?? "#bloc"}</Text>
-      <Text style={styles.muted}>Ecran mock V1 pret pour integration contenu reel.</Text>
+    <View style={{ flex: 1, backgroundColor: c.background, padding: 20, justifyContent: "center" }}>
+      <Text style={{ color: c.textPrimary, fontSize: 24, fontWeight: "700" }}>{trend?.title ?? "Tendance"}</Text>
+      <Text style={{ color: c.textPrimary, marginTop: 8 }}>Tag : {trend?.tag ?? "#bloc"}</Text>
+      <Text style={{ color: c.textSecondary, marginTop: 8 }}>Écran mock V1 prêt pour intégration.</Text>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: colors.background,
-    padding: 20,
-    justifyContent: "center",
-  },
-  title: {
-    color: colors.text,
-    fontSize: 24,
-    fontWeight: "700",
-  },
-  text: {
-    color: colors.text,
-    marginTop: 8,
-    fontSize: 16,
-  },
-  muted: {
-    color: colors.textMuted,
-    marginTop: 8,
-  },
-});

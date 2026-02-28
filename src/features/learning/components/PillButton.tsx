@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text } from "react-native";
 
+
 type Props = {
   label: string;
   onPress?: () => void;
@@ -25,7 +26,7 @@ const styles = StyleSheet.create({
   },
   pressed: { opacity: 0.9 },
   dark: { backgroundColor: "#171819", borderColor: "#252627" },
-  light: { backgroundColor: "#FFFFFF", borderColor: "#FFFFFF" },
+  light: { backgroundColor: "#000000", borderColor: "#FFFFFF" },
   accent: { backgroundColor: "#2A1115", borderColor: "#533239" },
   text: { fontWeight: "700", fontSize: 12 },
   darkText: { color: "#E8E8E8" },

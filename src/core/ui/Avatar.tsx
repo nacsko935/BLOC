@@ -1,3 +1,4 @@
+import { useTheme } from "../theme/ThemeProvider";
 import { View } from "react-native";
 import { Image } from "expo-image";
 import { AppText } from "./AppText";
@@ -21,7 +22,7 @@ export function Avatar({ name, size = 44, uri }: Props) {
         width: size,
         height: size,
         borderRadius: radius,
-        backgroundColor: theme.colors.surfaceElevated,
+        backgroundColor: "#1c1c23",
         alignItems: "center",
         justifyContent: "center",
       }}

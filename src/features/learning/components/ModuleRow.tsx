@@ -41,7 +41,7 @@ export function ModuleRow({ module, rightLabel, onPress, onPressRight, progress,
 
 const styles = StyleSheet.create({
   row: {
-    backgroundColor: "#121214",
+    backgroundColor: "#000000",
     borderRadius: 18,
     borderWidth: 1,
     borderColor: "#242527",

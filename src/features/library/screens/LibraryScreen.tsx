@@ -1,3 +1,4 @@
+import { useTheme } from "../../../core/theme/ThemeProvider";
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, TextInput, View } from "react-native";
 import Screen from "../../../core/ui/Screen";
@@ -45,15 +46,15 @@ export default function LibraryScreen() {
           value={query}
           onChangeText={setQuery}
           placeholder="Rechercher..."
-          placeholderTextColor={theme.colors.textMuted}
+          placeholderTextColor={"rgba(255,255,255,0.45)"}
           style={{
-            backgroundColor: theme.colors.surface,
+            backgroundColor: "#16161b",
             borderWidth: 1,
-            borderColor: theme.colors.border,
+            borderColor: "rgba(255,255,255,0.08)",
             borderRadius: theme.radius.md,
             paddingHorizontal: 14,
             paddingVertical: 10,
-            color: theme.colors.text,
+            color: "#ffffff",
           }}
         />
 
@@ -98,7 +99,7 @@ export default function LibraryScreen() {
               <Card key={item.id}>
                 <AppText>{item.title}</AppText>
                 <AppText muted variant="caption" style={{ marginTop: 4 }}>
-                  {item.kind} · {item.subject} · {item.difficulty}
+                  {item.kind} ï¿½ {item.subject} ï¿½ {item.difficulty}
                 </AppText>
               </Card>
             ))

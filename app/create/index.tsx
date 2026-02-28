@@ -1,4 +1,2 @@
-import CreateHubScreen from "../../src/features/create/screens/CreateHubScreen";
-export default function CreateIndexRoute() {
-  return <CreateHubScreen />;
-}
+import CreatePageScreen from "../../src/features/create/screens/CreatePageScreen";
+export default function CreateRoute() { return <CreatePageScreen />; }

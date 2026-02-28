@@ -1,5 +1,5 @@
 import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
-import * as Notifications from "expo-notifications";
+// expo-notifications dynamically imported below for Expo Go compatibility
 import { useAuthStore } from "../state/useAuthStore";
 import { seedInitialContent, seedPosts } from "../lib/dev/seed";
 import { AppButton } from "../src/core/ui/AppButton";
@@ -16,7 +16,7 @@ export default function DebugToolsScreen() {
   }
 
   const simulatePush = async () => {
-    await Notifications.scheduleNotificationAsync({
+    await null?.scheduleNotificationAsync({
       content: {
         title: "Test push BLOC",
         body: "Tap pour ouvrir une conversation",

@@ -1,6 +1,6 @@
 import { useEffect } from "react";
+import { ActivityIndicator, View } from "react-native";
 import { Redirect } from "expo-router";
-import { View, Text } from "react-native";
 import { useAuthStore } from "../state/useAuthStore";
 
 export default function Index() {
@@ -12,13 +12,14 @@ export default function Index() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: "#0b0b0f", alignItems: "center", justifyContent: "center" }}>
-        <Text style={{ color: "rgba(255,255,255,0.7)" }}>Chargement...</Text>
+      <View style={{ flex: 1, backgroundColor: "#000000", alignItems: "center", justifyContent: "center", gap: 16 }}>
+        <View style={{ width: 60, height: 60, borderRadius: 18, backgroundColor: "#7B6CFF", alignItems: "center", justifyContent: "center" }}>
+          <ActivityIndicator color="#FFFFFF" size="small" />
+        </View>
       </View>
     );
   }
 
   if (session) return <Redirect href="/(tabs)/home" />;
-
   return <Redirect href="/(auth)/account-type" />;
 }

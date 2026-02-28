@@ -1,366 +1,169 @@
-import React, { useState } from "react";
+import { useTheme } from "../../src/core/theme/ThemeProvider";
+import React, { useRef, useState } from "react";
 import {
-  View,
-  Text,
-  Pressable,
-  StyleSheet,
-  ScrollView,
-  Alert,
+  ActivityIndicator, Alert, Pressable, ScrollView,
+  Text, TextInput, View,
 } from "react-native";
 import { useRouter } from "expo-router";
-import * as DocumentPicker from 'expo-document-picker';
-import * as ImagePicker from 'expo-image-picker';
-import { Audio } from 'expo-av';
+import * as DocumentPicker from "expo-document-picker";
+import * as ImagePicker from "expo-image-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { theme } from "../../src/core/ui/theme";
+import { Ionicons } from "@expo/vector-icons";
+import { useFeedStore } from "../../state/useFeedStore";
+import { useAuthStore } from "../../state/useAuthStore";
 
-interface ActionButton {
-  id: string;
-  title: string;
-  subtitle: string;
-  icon: string;
-  color: string;
-  action: () => void;
+// expo-av chargé dynamiquement pour éviter crash Expo Go
+async function safeGetAudio() {
+  try {
+    const { Audio } = await import("expo-av");
+    return Audio;
+  } catch {
+    return null;
+  }
 }
 
 export default function CreateModal() {
-  const router = useRouter();
-  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const router   = useRouter();
+  const { c }    = useTheme();
+  const { profile } = useAuthStore();
+  const { createPost, refresh } = useFeedStore();
 
-  // Import fichier
-  const handleImportFile = async () => {
+  const [tab,         setTab]         = useState<"post"|"audio"|"fichier">("post");
+  const [title,       setTitle]       = useState("");
+  const [content,     setContent]     = useState("");
+  const [publishing,  setPublishing]  = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordSecs,  setRecordSecs]  = useState(0);
+  const recRef   = useRef<any>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const fmt = (s: number) => `${Math.floor(s/60)}:${Math.floor(s%60).toString().padStart(2,"0")}`;
+
+  const startRec = async () => {
+    const Audio = await safeGetAudio();
+    if (!Audio) { Alert.alert("Non supporté", "L'enregistrement audio n'est pas disponible ici."); return; }
     try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: '*/*',
-        copyToCacheDirectory: true,
-      });
-
-      if (result.canceled) {
-        return;
-      }
-
-      const file = result.assets[0];
-      Alert.alert(
-        'Fichier importé',
-        `Nom: ${file.name}\nTaille: ${(file.size! / 1024).toFixed(2)} KB`,
-        [
-          { text: 'OK', onPress: () => router.back() }
-        ]
-      );
-    } catch (error) {
-      Alert.alert('Erreur', 'Impossible d\'importer le fichier');
-    }
+      const { granted } = await Audio.requestPermissionsAsync();
+      if (!granted) return;
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
+      const { recording } = await Audio.Recording.createAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
+      recRef.current = recording;
+      setIsRecording(true); setRecordSecs(0);
+      timerRef.current = setInterval(() => setRecordSecs(s => s+1), 1000);
+    } catch (e: any) { Alert.alert("Erreur", e?.message); }
   };
 
-  // Enregistrement audio
-  const handleRecordAudio = async () => {
+  const stopRec = async () => {
+    if (!recRef.current) return;
+    if (timerRef.current) clearInterval(timerRef.current);
     try {
-      const permission = await Audio.requestPermissionsAsync();
-      
-      if (!permission.granted) {
-        Alert.alert('Permission refusée', 'L\'accès au microphone est nécessaire');
-        return;
-      }
-
-      if (recording) {
-        // Stop recording
-        await recording.stopAndUnloadAsync();
-        const uri = recording.getURI();
-        setRecording(null);
-        
-        Alert.alert(
-          'Enregistrement terminé',
-          `Audio sauvegardé`,
-          [{ text: 'OK', onPress: () => router.back() }]
-        );
-      } else {
-        // Start recording
-        await Audio.setAudioModeAsync({
-          allowsRecordingIOS: true,
-          playsInSilentModeIOS: true,
-        });
-        
-        const { recording: newRecording } = await Audio.Recording.createAsync(
-          Audio.RecordingOptionsPresets.HIGH_QUALITY
-        );
-        
-        setRecording(newRecording);
-        Alert.alert('Enregistrement...', 'Cliquez à nouveau pour arrêter');
-      }
-    } catch (error) {
-      Alert.alert('Erreur', 'Impossible d\'enregistrer l\'audio');
-    }
+      await recRef.current.stopAndUnloadAsync();
+      recRef.current = null; setIsRecording(false); setRecordSecs(0);
+      Alert.alert("Enregistré ✅", "Note audio sauvegardée.");
+    } catch { setIsRecording(false); }
   };
 
-  // Scanner / Photo
-  const handleScanDocument = async () => {
+  const pickFile = async () => {
     try {
-      const permission = await ImagePicker.requestCameraPermissionsAsync();
-      
-      if (!permission.granted) {
-        Alert.alert('Permission refusée', 'L\'accès à la caméra est nécessaire');
-        return;
-      }
-
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        quality: 1,
-      });
-
-      if (!result.canceled) {
-        Alert.alert(
-          'Document scanné',
-          'Le document a été capturé avec succès',
-          [{ text: 'OK', onPress: () => router.back() }]
-        );
-      }
-    } catch (error) {
-      Alert.alert('Erreur', 'Impossible de scanner le document');
-    }
+      const r = await DocumentPicker.getDocumentAsync({ type: "*/*", copyToCacheDirectory: true });
+      if (!r.canceled && r.assets?.[0]) Alert.alert("Fichier sélectionné", r.assets[0].name);
+    } catch {}
   };
 
-  // Créer résumé
-  const handleCreateSummary = () => {
-    Alert.alert(
-      'Créer un résumé',
-      'Sélectionnez un document à résumer',
-      [
-        {
-          text: 'Choisir un fichier',
-          onPress: async () => {
-            const result = await DocumentPicker.getDocumentAsync({
-              type: ['application/pdf', 'text/*', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
-            });
-            
-            if (!result.canceled) {
-              // Simuler la génération de résumé
-              setTimeout(() => {
-                Alert.alert(
-                  'Résumé généré',
-                  'Résumé créé avec succès ! Le résumé automatique sera disponible dans vos notes.',
-                  [{ text: 'OK', onPress: () => router.back() }]
-                );
-              }, 1500);
-            }
-          },
-        },
-        { text: 'Annuler', style: 'cancel' },
-      ]
-    );
+  const pickImage = async () => {
+    try {
+      const { granted } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!granted) return;
+      const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaType.images, quality: 0.85 });
+      if (!r.canceled && r.assets?.[0]) Alert.alert("Média sélectionné", r.assets[0].uri.split("/").pop() || "");
+    } catch {}
   };
 
-  // Outils d'études
-  const handleStudyTools = () => {
-    Alert.alert(
-      'Outils d\'études',
-      'Choisissez un outil',
-      [
-        {
-          text: '⏱️ Timer Pomodoro',
-          onPress: () => {
-            Alert.alert('Timer', 'Fonctionnalité en cours de développement');
-          },
-        },
-        {
-          text: '🎴 Flashcards',
-          onPress: () => {
-            Alert.alert('Flashcards', 'Fonctionnalité en cours de développement');
-          },
-        },
-        {
-          text: '📝 Quiz',
-          onPress: () => {
-            Alert.alert('Quiz', 'Fonctionnalité en cours de développement');
-          },
-        },
-        { text: 'Annuler', style: 'cancel' },
-      ]
-    );
+  const publish = async () => {
+    if (!content.trim()) { Alert.alert("Champ requis", "Ajoute un contenu."); return; }
+    setPublishing(true);
+    try {
+      await createPost({ title: title.trim() || undefined, content: content.trim(), filiere: profile?.filiere || "Général" } as any);
+      await refresh(profile?.filiere || undefined);
+      router.back();
+    } catch (e: any) { Alert.alert("Erreur", e?.message || "Impossible de publier."); }
+    finally { setPublishing(false); }
   };
 
-  const actions: ActionButton[] = [
-    {
-      id: 'import',
-      title: 'Importer un fichier',
-      subtitle: 'PDF, Word, Excel, Images...',
-      icon: '📁',
-      color: '#3d8fff',
-      action: handleImportFile,
-    },
-    {
-      id: 'audio',
-      title: recording ? 'Arrêter l\'enregistrement' : 'Enregistrer audio',
-      subtitle: recording ? 'Enregistrement en cours...' : 'Notes vocales, cours...',
-      icon: recording ? '⏹️' : '🎙️',
-      color: '#ff3b30',
-      action: handleRecordAudio,
-    },
-    {
-      id: 'scan',
-      title: 'Scanner un document',
-      subtitle: 'Photo, document, tableau...',
-      icon: '📷',
-      color: '#34c759',
-      action: handleScanDocument,
-    },
-    {
-      id: 'summary',
-      title: 'Créer un résumé',
-      subtitle: 'Résumé automatique AI',
-      icon: '🤖',
-      color: '#b164ff',
-      action: handleCreateSummary,
-    },
-    {
-      id: 'tools',
-      title: 'Outils d\'études',
-      subtitle: 'Timer, Flashcards, Quiz...',
-      icon: '🎯',
-      color: '#f5a623',
-      action: handleStudyTools,
-    },
+  const TABS = [
+    { key: "post"    as const, label: "Publication", icon: "create-outline"      },
+    { key: "audio"   as const, label: "Audio",       icon: "mic-outline"          },
+    { key: "fichier" as const, label: "Fichier",     icon: "attach-outline"       },
   ];
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.content}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.title}>Quoi de neuf ?</Text>
-          <Pressable
-            onPress={() => router.back()}
-            style={({ pressed }) => [
-              styles.closeButton,
-              pressed && styles.closeButtonPressed,
-            ]}
-          >
-            <Text style={styles.closeButtonText}>✕</Text>
-          </Pressable>
-        </View>
-
-        {/* Actions */}
-        <ScrollView 
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.actionsList}
-        >
-          {actions.map((action, index) => (
-            <Pressable
-              key={action.id}
-              onPress={action.action}
-              style={({ pressed }) => [
-                styles.actionButton,
-                pressed && styles.actionButtonPressed,
-              ]}
-            >
-              <View style={[styles.iconContainer, { backgroundColor: `${action.color}20` }]}>
-                <Text style={styles.icon}>{action.icon}</Text>
-              </View>
-              <View style={styles.actionContent}>
-                <Text style={styles.actionTitle}>{action.title}</Text>
-                <Text style={styles.actionSubtitle}>{action.subtitle}</Text>
-              </View>
-              <View style={[styles.actionArrow, { backgroundColor: action.color }]}>
-                <Text style={styles.actionArrowText}>→</Text>
-              </View>
-            </Pressable>
-          ))}
-        </ScrollView>
+    <SafeAreaView style={{ flex: 1, backgroundColor: c.background }}>
+      {/* Header */}
+      <View style={{ flexDirection:"row", alignItems:"center", justifyContent:"space-between", paddingHorizontal:16, paddingVertical:14, borderBottomWidth:1, borderBottomColor:c.border }}>
+        <Pressable onPress={() => router.back()} style={{ width:36, height:36, borderRadius:18, backgroundColor:c.cardAlt, alignItems:"center", justifyContent:"center" }}>
+          <Ionicons name="close" size={20} color={c.textPrimary} />
+        </Pressable>
+        <Text style={{ color:c.textPrimary, fontSize:17, fontWeight:"800" }}>Créer</Text>
+        <Pressable onPress={publish} disabled={publishing || !content.trim()} style={{ height:34, borderRadius:999, paddingHorizontal:16, backgroundColor: content.trim() ? c.accentPurple : c.cardAlt, alignItems:"center", justifyContent:"center" }}>
+          {publishing ? <ActivityIndicator color="#FFF" size="small" /> : <Text style={{ color: content.trim() ? "#FFF" : c.textSecondary, fontWeight:"800", fontSize:14 }}>Publier</Text>}
+        </Pressable>
       </View>
+
+      {/* Onglets type */}
+      <View style={{ flexDirection:"row", borderBottomWidth:1, borderBottomColor:c.border }}>
+        {TABS.map(t => (
+          <Pressable key={t.key} onPress={() => setTab(t.key)} style={{ flex:1, paddingVertical:12, alignItems:"center", flexDirection:"row", justifyContent:"center", gap:6, borderBottomWidth:2, borderBottomColor:tab===t.key?c.accentPurple:"transparent" }}>
+            <Ionicons name={t.icon as any} size={16} color={tab===t.key?c.accentPurple:c.textSecondary} />
+            <Text style={{ color:tab===t.key?c.accentPurple:c.textSecondary, fontWeight:"700", fontSize:13 }}>{t.label}</Text>
+          </Pressable>
+        ))}
+      </View>
+
+      <ScrollView contentContainerStyle={{ padding:16, gap:14 }} keyboardShouldPersistTaps="handled">
+        {tab === "post" && (
+          <>
+            <TextInput value={title} onChangeText={setTitle} placeholder="Titre (optionnel)" placeholderTextColor={c.textSecondary}
+              style={{ backgroundColor:c.cardAlt, borderRadius:14, borderWidth:1, borderColor:c.border, paddingHorizontal:14, paddingVertical:12, color:c.textPrimary, fontSize:15 }} />
+            <TextInput value={content} onChangeText={setContent} placeholder="Exprime-toi, partage tes notes, tes QCM…" placeholderTextColor={c.textSecondary}
+              style={{ backgroundColor:c.cardAlt, borderRadius:14, borderWidth:1, borderColor:c.border, paddingHorizontal:14, paddingVertical:12, color:c.textPrimary, fontSize:15, minHeight:160, textAlignVertical:"top" }} multiline />
+            <Pressable onPress={pickImage} style={({ pressed }) => [{ flexDirection:"row", alignItems:"center", gap:12, backgroundColor:c.cardAlt, borderRadius:14, borderWidth:1, borderColor:c.border, padding:14 }, pressed && { opacity:0.8 }]}>
+              <Ionicons name="image-outline" size={22} color={c.accentBlue} />
+              <Text style={{ color:c.textPrimary, fontWeight:"600" }}>Ajouter une image</Text>
+            </Pressable>
+          </>
+        )}
+
+        {tab === "audio" && (
+          <View style={{ alignItems:"center", gap:20, paddingVertical:30 }}>
+            <View style={{ width:100, height:100, borderRadius:50, backgroundColor: isRecording ? "#FF3B3020" : c.accentPurple+"20", borderWidth:2, borderColor: isRecording ? "#FF3B30" : c.accentPurple, alignItems:"center", justifyContent:"center" }}>
+              <Ionicons name={isRecording ? "stop" : "mic"} size={40} color={isRecording ? "#FF3B30" : c.accentPurple} />
+            </View>
+            {isRecording && <Text style={{ color:"#FF3B30", fontSize:22, fontWeight:"800", fontVariant:["tabular-nums"] }}>{fmt(recordSecs)}</Text>}
+            <Pressable onPress={isRecording ? stopRec : startRec} style={{ height:50, borderRadius:999, paddingHorizontal:30, backgroundColor: isRecording ? "#FF3B30" : c.accentPurple, alignItems:"center", justifyContent:"center" }}>
+              <Text style={{ color:"#FFF", fontWeight:"800", fontSize:16 }}>{isRecording ? "Arrêter et sauvegarder" : "Commencer l'enregistrement"}</Text>
+            </Pressable>
+            <Text style={{ color:c.textSecondary, textAlign:"center", fontSize:13 }}>Maintiens pour enregistrer une note audio à partager</Text>
+          </View>
+        )}
+
+        {tab === "fichier" && (
+          <View style={{ gap:12 }}>
+            {[
+              { icon:"document-attach-outline", label:"Importer un PDF",      action: pickFile  },
+              { icon:"image-outline",           label:"Importer une image",   action: pickImage },
+              { icon:"cloud-upload-outline",    label:"Depuis le stockage",   action: pickFile  },
+            ].map(item => (
+              <Pressable key={item.label} onPress={item.action} style={({ pressed }) => [{ flexDirection:"row", alignItems:"center", gap:14, backgroundColor:c.cardAlt, borderRadius:16, borderWidth:1, borderColor:c.border, padding:16 }, pressed && { opacity:0.8 }]}>
+                <View style={{ width:44, height:44, borderRadius:14, backgroundColor:c.accentPurple+"22", alignItems:"center", justifyContent:"center" }}>
+                  <Ionicons name={item.icon as any} size={22} color={c.accentPurple} />
+                </View>
+                <Text style={{ color:c.textPrimary, fontWeight:"700", fontSize:15 }}>{item.label}</Text>
+                <Ionicons name="chevron-forward" size={16} color={c.textSecondary} style={{ marginLeft:"auto" }} />
+              </Pressable>
+            ))}
+          </View>
+        )}
+      </ScrollView>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.bg,
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 20,
-  },
-  title: {
-    color: theme.colors.text,
-    fontSize: 28,
-    fontWeight: '800',
-    letterSpacing: -0.8,
-  },
-  closeButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: theme.colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  closeButtonPressed: {
-    transform: [{ scale: 0.95 }],
-    backgroundColor: theme.colors.surfaceElevated,
-  },
-  closeButtonText: {
-    color: theme.colors.text,
-    fontSize: 20,
-    fontWeight: '700',
-  },
-  actionsList: {
-    paddingBottom: 40,
-    gap: 12,
-  },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.lg,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-  },
-  actionButtonPressed: {
-    transform: [{ scale: 0.98 }],
-    backgroundColor: theme.colors.surfaceElevated,
-  },
-  iconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
-  },
-  icon: {
-    fontSize: 28,
-  },
-  actionContent: {
-    flex: 1,
-  },
-  actionTitle: {
-    color: theme.colors.text,
-    fontSize: 16,
-    fontWeight: '800',
-    marginBottom: 4,
-  },
-  actionSubtitle: {
-    color: theme.colors.textMuted,
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  actionArrow: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  actionArrowText: {
-    color: '#ffffff',
-    fontSize: 18,
-    fontWeight: '800',
-  },
-});

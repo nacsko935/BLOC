@@ -1,5 +1,4 @@
-import { View } from "react-native";
-
+import CreatePageScreen from "../../src/features/create/screens/CreatePageScreen";
 export default function ComposeTabRoute() {
-  return <View style={{ flex: 1, backgroundColor: "#000" }} />;
+  return <CreatePageScreen />;
 }

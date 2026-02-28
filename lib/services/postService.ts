@@ -60,7 +60,7 @@ export async function fetchFeed(params: FetchFeedParams = {}): Promise<FetchFeed
   const authorIds = Array.from(new Set(posts.map((post) => post.author_id)));
 
   const [profilesRes, likesRes, savesRes, commentsRes, myLikesRes, mySavesRes] = await Promise.all([
-    supabase.from("profiles").select("id,username,full_name,bio,filiere,niveau,avatar_url,notification_enabled,push_enabled,analytics_enabled").in("id", authorIds),
+    supabase.from("profiles").select("id,username,full_name,bio,filiere,niveau,avatar_url").in("id", authorIds),
     supabase.from("post_likes").select("post_id").in("post_id", postIds),
     supabase.from("post_saves").select("post_id").in("post_id", postIds),
     supabase.from("comments").select("post_id").in("post_id", postIds),
@@ -126,7 +126,7 @@ export async function createPost(input: {
 
   const profile = await supabase
     .from("profiles")
-    .select("id,username,full_name,bio,filiere,niveau,avatar_url,notification_enabled,push_enabled,analytics_enabled")
+    .select("id,username,full_name,bio,filiere,niveau,avatar_url")
     .eq("id", userId)
     .maybeSingle();
 
@@ -205,7 +205,7 @@ export async function fetchComments(postId: string) {
 
   const profilesRes = await supabase
     .from("profiles")
-    .select("id,username,full_name,bio,filiere,niveau,avatar_url,notification_enabled,push_enabled,analytics_enabled")
+    .select("id,username,full_name,bio,filiere,niveau,avatar_url")
     .in("id", authorIds);
 
   if (profilesRes.error) throw profilesRes.error;

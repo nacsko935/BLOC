@@ -1,30 +1,14 @@
+import { useTheme } from "../theme/ThemeProvider";
 import { View } from "react-native";
-import { theme } from "./theme";
 
-type Props = {
-  value: number;
-  color?: string;
-  height?: number;
-};
-
-export function ProgressBar({ value, color = theme.colors.accent, height = 8 }: Props) {
+export function ProgressBar({ value, color = "#6E5CFF", height = 8 }: {
+  value: number; color?: string; height?: number;
+}) {
+  const { c } = useTheme();
   const safeValue = Math.max(0, Math.min(100, value));
   return (
-    <View
-      style={{
-        height,
-        backgroundColor: theme.colors.surfaceElevated,
-        borderRadius: theme.radius.pill,
-        overflow: "hidden",
-      }}
-    >
-      <View
-        style={{
-          width: `${safeValue}%`,
-          height: "100%",
-          backgroundColor: color,
-        }}
-      />
+    <View style={{ height, backgroundColor: c.cardAlt, borderRadius: 999, overflow: "hidden" }}>
+      <View style={{ width: `${safeValue}%`, height: "100%", backgroundColor: color }} />
     </View>
   );
 }

@@ -1,3 +1,4 @@
+import { useTheme } from "../theme/ThemeProvider";
 import { Animated, View } from "react-native";
 import { useEffect, useRef } from "react";
 import { AppText } from "./AppText";
@@ -32,10 +33,10 @@ export function Toast({ visible, message }: Props) {
     >
       <View
         style={{
-          backgroundColor: theme.colors.surfaceElevated,
+          backgroundColor: "#1c1c23",
           borderRadius: theme.radius.md,
           borderWidth: 1,
-          borderColor: theme.colors.borderStrong,
+          borderColor: "rgba(255,255,255,0.14)",
           paddingHorizontal: 14,
           paddingVertical: 10,
         }}

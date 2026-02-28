@@ -1,5 +1,19 @@
+/**
+ * messageService.ts — schéma BLOC v2
+ *
+ * conversations: id, participant_a, participant_b, type ('dm'|'group'),
+ *                title, description, filiere, privacy, avatar_color, created_by, created_at
+ * messages:      id, conversation_id, sender_id, content, media_url, media_type, created_at
+ *
+ * Pour les DM  → participant_a/participant_b remplis, type='dm'
+ * Pour groupes → participant_a=created_by, participant_b=created_by (même valeur), type='group'
+ *                Les membres sont dans group_members (id, group_id, user_id)
+ */
+
 import { getSupabaseOrThrow } from "../supabase";
 import { Profile } from "../../types/db";
+
+// ── Types ──────────────────────────────────────────────────────────────────────
 
 export type InboxItem = {
   conversationId: string;
@@ -8,6 +22,8 @@ export type InboxItem = {
   timestamp: string;
   unreadCount: number;
   avatar: string;
+  avatarUrl: string | null;
+  otherUserId: string;
 };
 
 export type GroupListItem = {
@@ -30,7 +46,11 @@ export type ChatMessage = {
   senderName: string;
   text: string;
   timestamp: string;
+  mediaUrl?: string | null;
+  mediaType?: string | null;
 };
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
 
 async function requireUserId() {
   const supabase = getSupabaseOrThrow();
@@ -42,88 +62,62 @@ async function requireUserId() {
 }
 
 function initials(label: string) {
-  return label
-    .split(" ")
-    .slice(0, 2)
-    .map((s) => s.charAt(0).toUpperCase())
-    .join("");
+  return label.split(" ").slice(0, 2).map(s => s.charAt(0).toUpperCase()).join("");
 }
 
-export async function fetchInbox() {
+// ── fetchInbox ─────────────────────────────────────────────────────────────────
+
+export async function fetchInbox(): Promise<InboxItem[]> {
   const supabase = getSupabaseOrThrow();
   const userId = await requireUserId();
 
-  const { data: memberships, error: membershipsError } = await supabase
-    .from("conversation_members")
-    .select("conversation_id,last_read_at,conversations!inner(id,type,title)")
-    .eq("user_id", userId)
-    .eq("conversations.type", "dm");
+  const { data: convs, error } = await supabase
+    .from("conversations")
+    .select("id, participant_a, participant_b, created_at")
+    .or(`participant_a.eq.${userId},participant_b.eq.${userId}`)
+    .order("created_at", { ascending: false });
 
-  if (membershipsError) throw membershipsError;
-
-  const rows = memberships ?? [];
+  if (error) throw error;
+  if (!convs || convs.length === 0) return [];
 
   const items = await Promise.all(
-    rows.map(async (row: any) => {
-      const conversationId = row.conversation_id as string;
-      const lastReadAt = row.last_read_at as string | null;
+    convs.map(async (conv: any) => {
+      const conversationId = conv.id as string;
+      const otherId =
+        conv.participant_a === userId ? conv.participant_b : conv.participant_a;
 
-      const [otherMemberRes, lastMessageRes] = await Promise.all([
-        supabase
-          .from("conversation_members")
-          .select("user_id")
-          .eq("conversation_id", conversationId)
-          .neq("user_id", userId)
-          .limit(1)
-          .maybeSingle(),
-        supabase
-          .from("messages")
-          .select("id,content,created_at,sender_id")
-          .eq("conversation_id", conversationId)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle(),
-      ]);
+      const profileRes = await supabase
+        .from("profiles")
+        .select("id,username,full_name,avatar_url")
+        .eq("id", otherId)
+        .maybeSingle();
 
-      if (otherMemberRes.error) throw otherMemberRes.error;
-      if (lastMessageRes.error) throw lastMessageRes.error;
+      const profile = profileRes.data as Pick<Profile, "id" | "username" | "full_name" | "avatar_url"> | null;
+      const name = profile?.full_name || profile?.username || "Utilisateur";
 
-      const otherId = otherMemberRes.data?.user_id as string | undefined;
-      let profile: Profile | null = null;
-      if (otherId) {
-        const profileRes = await supabase
-          .from("profiles")
-          .select("id,username,full_name,bio,filiere,niveau,avatar_url")
-          .eq("id", otherId)
-          .maybeSingle();
-        if (profileRes.error) throw profileRes.error;
-        profile = (profileRes.data as Profile | null) ?? null;
-      }
-
-      let unreadQuery = supabase
+      const lastMsgRes = await supabase
         .from("messages")
-        .select("id", { count: "exact", head: true })
+        .select("id,content,created_at,sender_id")
         .eq("conversation_id", conversationId)
-        .neq("sender_id", userId);
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-      if (lastReadAt) unreadQuery = unreadQuery.gt("created_at", lastReadAt);
-
-      const unreadRes = await unreadQuery;
-      if (unreadRes.error) throw unreadRes.error;
-
-      const title = profile?.full_name || profile?.username || row.conversations?.title || "Discussion";
-      const lastMessage = (lastMessageRes.data?.content as string | undefined) || "Aucun message";
-      const lastDate = lastMessageRes.data?.created_at
-        ? new Date(lastMessageRes.data.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
+      const lastMsg = lastMsgRes.data;
+      const lastMessage = lastMsg?.content || "Aucun message";
+      const timestamp = lastMsg?.created_at
+        ? new Date(lastMsg.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
         : "";
 
       return {
         conversationId,
-        name: title,
+        name,
         lastMessage,
-        timestamp: lastDate || "",
-        unreadCount: unreadRes.count || 0,
-        avatar: initials(title),
+        timestamp,
+        unreadCount: 0,
+        avatar: initials(name),
+        avatarUrl: profile?.avatar_url ?? null,
+        otherUserId: otherId,
       } as InboxItem;
     })
   );
@@ -131,73 +125,65 @@ export async function fetchInbox() {
   return items.sort((a, b) => (a.timestamp < b.timestamp ? 1 : -1));
 }
 
-export async function fetchGroups() {
+// ── fetchGroups ────────────────────────────────────────────────────────────────
+
+export async function fetchGroups(): Promise<GroupListItem[]> {
   const supabase = getSupabaseOrThrow();
   const userId = await requireUserId();
 
-  const [conversationsRes, membershipsRes] = await Promise.all([
-    supabase
-      .from("conversations")
-      .select("id,title,description,filiere,privacy,avatar_color,type,created_at")
-      .eq("type", "group"),
-    supabase.from("conversation_members").select("conversation_id,last_read_at").eq("user_id", userId),
-  ]);
+  // Tous les groupes publics
+  const { data: allGroups, error: groupsError } = await supabase
+    .from("groups")
+    .select("id, name, description, filiere, privacy, avatar_color, created_at")
+    .order("created_at", { ascending: false });
 
-  if (conversationsRes.error) throw conversationsRes.error;
-  if (membershipsRes.error) throw membershipsRes.error;
+  if (groupsError) {
+    // Table groups n'existe pas encore → retourner []
+    console.warn("groups table not found:", groupsError.message);
+    return [];
+  }
 
-  const groups = conversationsRes.data ?? [];
-  const memberships = membershipsRes.data ?? [];
-  const membershipMap = new Map<string, string | null>(memberships.map((m) => [m.conversation_id, m.last_read_at]));
+  if (!allGroups || allGroups.length === 0) return [];
+
+  // Groupes dont je suis membre
+  const { data: myMemberships } = await supabase
+    .from("group_members")
+    .select("group_id")
+    .eq("user_id", userId);
+
+  const myGroupIds = new Set((myMemberships ?? []).map((m: any) => m.group_id));
 
   const items = await Promise.all(
-    groups.map(async (group: any) => {
+    allGroups.map(async (group: any) => {
       const groupId = group.id as string;
-      const joined = membershipMap.has(groupId);
-      const lastReadAt = membershipMap.get(groupId) || null;
+      const joined = myGroupIds.has(groupId);
 
       const [memberCountRes, lastMessageRes] = await Promise.all([
         supabase
-          .from("conversation_members")
+          .from("group_members")
           .select("user_id", { count: "exact", head: true })
-          .eq("conversation_id", groupId),
+          .eq("group_id", groupId),
         supabase
-          .from("messages")
+          .from("group_messages")
           .select("content,created_at")
-          .eq("conversation_id", groupId)
+          .eq("group_id", groupId)
           .order("created_at", { ascending: false })
           .limit(1)
           .maybeSingle(),
       ]);
 
-      if (memberCountRes.error) throw memberCountRes.error;
-      if (lastMessageRes.error) throw lastMessageRes.error;
-
-      let unreadCount = 0;
-      if (joined) {
-        let unreadQuery = supabase
-          .from("messages")
-          .select("id", { count: "exact", head: true })
-          .eq("conversation_id", groupId)
-          .neq("sender_id", userId);
-        if (lastReadAt) unreadQuery = unreadQuery.gt("created_at", lastReadAt);
-        const unreadRes = await unreadQuery;
-        if (unreadRes.error) throw unreadRes.error;
-        unreadCount = unreadRes.count || 0;
-      }
-
       return {
         groupId,
-        name: group.title || "Groupe",
-        description: group.description || "Groupe de travail",
-        filiere: group.filiere || null,
+        name: group.name || "Groupe",
+        description: group.description || "",
+        filiere: group.filiere ?? null,
         privacy: (group.privacy || "public") as "public" | "private",
         memberCount: memberCountRes.count || 0,
-        lastMessage: (lastMessageRes.data?.content as string | undefined) || "Aucun message",
+        lastMessage: lastMessageRes.data?.content || "Aucun message",
         lastActivity: lastMessageRes.data?.created_at
           ? new Date(lastMessageRes.data.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
           : "",
-        unreadCount,
+        unreadCount: 0,
         avatarColor: group.avatar_color || "#654BFF",
         joined,
       } as GroupListItem;
@@ -207,24 +193,25 @@ export async function fetchGroups() {
   return items;
 }
 
+// ── createGroup ────────────────────────────────────────────────────────────────
+
 export async function createGroup(input: {
   name: string;
   description?: string;
   filiere?: string;
   privacy: "public" | "private";
-}) {
+}): Promise<string> {
   const supabase = getSupabaseOrThrow();
   const userId = await requireUserId();
 
   const { data, error } = await supabase
-    .from("conversations")
+    .from("groups")
     .insert({
-      type: "group",
-      title: input.name.trim(),
+      name: input.name.trim(),
       description: input.description?.trim() || null,
       filiere: input.filiere?.trim() || null,
       privacy: input.privacy,
-      avatar_color: ["#654BFF", "#2A8CFF", "#7C52FF", "#4A7BFF"][Date.now() % 4],
+      avatar_color: ["#654BFF","#2A8CFF","#7C52FF","#4A7BFF","#FF6B6B"][Math.floor(Math.random()*5)],
       created_by: userId,
     })
     .select("id")
@@ -232,54 +219,62 @@ export async function createGroup(input: {
 
   if (error) throw error;
 
-  const { error: memberError } = await supabase
-    .from("conversation_members")
-    .insert({ conversation_id: data.id, user_id: userId, last_read_at: new Date().toISOString() });
+  const groupId = data.id as string;
 
-  if (memberError) throw memberError;
-  return data.id as string;
+  // Ajouter le créateur comme membre
+  await supabase.from("group_members").insert({ group_id: groupId, user_id: userId });
+
+  return groupId;
 }
 
-export async function joinGroup(groupId: string) {
+// ── joinGroup ──────────────────────────────────────────────────────────────────
+
+export async function joinGroup(groupId: string): Promise<void> {
   const supabase = getSupabaseOrThrow();
   const userId = await requireUserId();
   const { error } = await supabase
-    .from("conversation_members")
-    .upsert({ conversation_id: groupId, user_id: userId, last_read_at: new Date().toISOString() }, { onConflict: "conversation_id,user_id" });
+    .from("group_members")
+    .upsert({ group_id: groupId, user_id: userId }, { onConflict: "group_id,user_id" });
   if (error) throw error;
 }
 
-export async function leaveGroup(groupId: string) {
+// ── leaveGroup ─────────────────────────────────────────────────────────────────
+
+export async function leaveGroup(groupId: string): Promise<void> {
   const supabase = getSupabaseOrThrow();
   const userId = await requireUserId();
   const { error } = await supabase
-    .from("conversation_members")
+    .from("group_members")
     .delete()
-    .eq("conversation_id", groupId)
+    .eq("group_id", groupId)
     .eq("user_id", userId);
   if (error) throw error;
 }
 
-export async function fetchConversationMessages(conversationId: string) {
+// ── fetchConversationMessages ─────────────────────────────────────────────────
+
+export async function fetchConversationMessages(conversationId: string): Promise<ChatMessage[]> {
   const supabase = getSupabaseOrThrow();
   const { data, error } = await supabase
     .from("messages")
-    .select("id,sender_id,content,created_at")
+    .select("id,sender_id,content,media_url,media_type,created_at")
     .eq("conversation_id", conversationId)
     .order("created_at", { ascending: true });
+
   if (error) throw error;
 
   const rows = data ?? [];
-  const senderIds = Array.from(new Set(rows.map((message: any) => message.sender_id)));
+  const senderIds = Array.from(new Set(rows.map((m: any) => m.sender_id)));
 
   let profileMap = new Map<string, Profile>();
   if (senderIds.length > 0) {
     const profilesRes = await supabase
       .from("profiles")
-      .select("id,username,full_name,bio,filiere,niveau,avatar_url")
+      .select("id,username,full_name,avatar_url")
       .in("id", senderIds);
-    if (profilesRes.error) throw profilesRes.error;
-    profileMap = new Map((profilesRes.data ?? []).map((profile: any) => [profile.id, profile as Profile]));
+    if (!profilesRes.error) {
+      profileMap = new Map((profilesRes.data ?? []).map((p: any) => [p.id, p as Profile]));
+    }
   }
 
   return rows.map((message: any) => {
@@ -288,121 +283,146 @@ export async function fetchConversationMessages(conversationId: string) {
       id: message.id,
       senderId: message.sender_id,
       senderName: profile?.full_name || profile?.username || "Utilisateur",
-      text: message.content,
-      timestamp: new Date(message.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }),
+      text: message.content || "",
+      timestamp: new Date(message.created_at).toLocaleTimeString("fr-FR", {
+        hour: "2-digit", minute: "2-digit",
+      }),
+      mediaUrl: message.media_url ?? null,
+      mediaType: message.media_type ?? null,
     } as ChatMessage;
   });
 }
 
-export async function sendMessage(conversationId: string, content: string) {
+// ── fetchGroupMessages ─────────────────────────────────────────────────────────
+
+export async function fetchGroupMessages(groupId: string): Promise<ChatMessage[]> {
   const supabase = getSupabaseOrThrow();
-  const userId = await requireUserId();
-  const senderProfile = await supabase
-    .from("profiles")
-    .select("username,full_name")
-    .eq("id", userId)
-    .maybeSingle();
-  if (senderProfile.error) throw senderProfile.error;
+  const { data, error } = await supabase
+    .from("group_messages")
+    .select("id,sender_id,content,created_at")
+    .eq("group_id", groupId)
+    .order("created_at", { ascending: true });
 
-  const inserted = await supabase
-    .from("messages")
-    .insert({
-      conversation_id: conversationId,
-      sender_id: userId,
-      content: content.trim(),
-    })
-    .select("id,content")
-    .single();
-  if (inserted.error) throw inserted.error;
-
-  const [convRes, recipientsRes] = await Promise.all([
-    supabase.from("conversations").select("id,type,title").eq("id", conversationId).maybeSingle(),
-    supabase.from("conversation_members").select("user_id").eq("conversation_id", conversationId).neq("user_id", userId),
-  ]);
-  if (convRes.error) throw convRes.error;
-  if (recipientsRes.error) throw recipientsRes.error;
-
-  const recipientIds = (recipientsRes.data ?? []).map((row) => row.user_id);
-  if (recipientIds.length > 0) {
-    await supabase.functions.invoke("new-message-push", {
-      body: {
-        message_id: inserted.data.id,
-        conversation_id: conversationId,
-        sender_id: userId,
-        sender_name: senderProfile.data?.full_name || senderProfile.data?.username || "Nouveau message",
-        body: inserted.data.content,
-        type: convRes.data?.type === "group" ? "group" : "dm",
-        recipient_user_ids: recipientIds,
-      },
-    });
+  if (error) {
+    console.warn("group_messages table:", error.message);
+    return [];
   }
+
+  const rows = data ?? [];
+  const senderIds = Array.from(new Set(rows.map((m: any) => m.sender_id)));
+  let profileMap = new Map<string, Profile>();
+
+  if (senderIds.length > 0) {
+    const res = await supabase.from("profiles").select("id,username,full_name,avatar_url").in("id", senderIds);
+    if (!res.error) profileMap = new Map((res.data ?? []).map((p: any) => [p.id, p as Profile]));
+  }
+
+  return rows.map((m: any) => {
+    const p = profileMap.get(m.sender_id);
+    return {
+      id: m.id,
+      senderId: m.sender_id,
+      senderName: p?.full_name || p?.username || "Utilisateur",
+      text: m.content || "",
+      timestamp: new Date(m.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }),
+    } as ChatMessage;
+  });
 }
 
-export async function markConversationRead(conversationId: string) {
+// ── sendMessage ───────────────────────────────────────────────────────────────
+
+export async function sendMessage(conversationId: string, content: string): Promise<void> {
   const supabase = getSupabaseOrThrow();
   const userId = await requireUserId();
-  const { error } = await supabase
-    .from("conversation_members")
-    .update({ last_read_at: new Date().toISOString() })
-    .eq("conversation_id", conversationId)
-    .eq("user_id", userId);
+  const { error } = await supabase.from("messages").insert({
+    conversation_id: conversationId,
+    sender_id: userId,
+    content: content.trim(),
+  });
   if (error) throw error;
 }
 
-export async function ensureDmConversation(otherUserId: string) {
+// ── sendGroupMessage ───────────────────────────────────────────────────────────
+
+export async function sendGroupMessage(groupId: string, content: string): Promise<void> {
+  const supabase = getSupabaseOrThrow();
+  const userId = await requireUserId();
+  const { error } = await supabase.from("group_messages").insert({
+    group_id: groupId,
+    sender_id: userId,
+    content: content.trim(),
+  });
+  if (error) throw error;
+}
+
+// ── markConversationRead ──────────────────────────────────────────────────────
+
+export async function markConversationRead(_conversationId: string): Promise<void> {
+  // Pas de last_read_at dans le schéma simplifié — no-op
+}
+
+// ── ensureDmConversation ──────────────────────────────────────────────────────
+
+export async function ensureDmConversation(otherUserId: string): Promise<string> {
   const supabase = getSupabaseOrThrow();
   const userId = await requireUserId();
 
-  const myMemberships = await supabase
-    .from("conversation_members")
-    .select("conversation_id,conversations!inner(id,type)")
-    .eq("user_id", userId)
-    .eq("conversations.type", "dm");
-  if (myMemberships.error) throw myMemberships.error;
-
-  const ids = (myMemberships.data ?? []).map((row: any) => row.conversation_id);
-
-  if (ids.length > 0) {
-    const existing = await supabase
-      .from("conversation_members")
-      .select("conversation_id")
-      .in("conversation_id", ids)
-      .eq("user_id", otherUserId)
-      .maybeSingle();
-
-    if (existing.error) throw existing.error;
-    if (existing.data?.conversation_id) return existing.data.conversation_id as string;
-  }
-
-  const created = await supabase
+  // Chercher conversation DM existante dans les deux sens
+  const { data: existing } = await supabase
     .from("conversations")
-    .insert({ type: "dm", title: null, created_by: userId })
+    .select("id")
+    .or(
+      `and(participant_a.eq.${userId},participant_b.eq.${otherUserId}),` +
+      `and(participant_a.eq.${otherUserId},participant_b.eq.${userId})`
+    )
+    .limit(1)
+    .maybeSingle();
+
+  if (existing?.id) return existing.id as string;
+
+  // Créer nouvelle conversation DM
+  const { data: created, error } = await supabase
+    .from("conversations")
+    .insert({ participant_a: userId, participant_b: otherUserId })
     .select("id")
     .single();
-  if (created.error) throw created.error;
 
-  const cid = created.data.id as string;
-  const membersRes = await supabase.from("conversation_members").insert([
-    { conversation_id: cid, user_id: userId, last_read_at: new Date().toISOString() },
-    { conversation_id: cid, user_id: otherUserId, last_read_at: null },
-  ]);
-  if (membersRes.error) throw membersRes.error;
-
-  return cid;
+  if (error) throw error;
+  return created.id as string;
 }
 
-export function subscribeToConversation(conversationId: string, onMessageInserted: () => void) {
+// ── subscribeToConversation ───────────────────────────────────────────────────
+
+export function subscribeToConversation(
+  conversationId: string,
+  onMessageInserted: () => void
+): () => void {
   const supabase = getSupabaseOrThrow();
   const channel = supabase
     .channel(`messages-${conversationId}`)
-    .on(
-      "postgres_changes",
-      { event: "INSERT", schema: "public", table: "messages", filter: `conversation_id=eq.${conversationId}` },
-      () => onMessageInserted()
-    )
+    .on("postgres_changes", {
+      event: "INSERT", schema: "public", table: "messages",
+      filter: `conversation_id=eq.${conversationId}`,
+    }, () => onMessageInserted())
     .subscribe();
 
-  return () => {
-    supabase.removeChannel(channel);
-  };
+  return () => { supabase.removeChannel(channel); };
+}
+
+// ── subscribeToGroup ──────────────────────────────────────────────────────────
+
+export function subscribeToGroup(
+  groupId: string,
+  onMessageInserted: () => void
+): () => void {
+  const supabase = getSupabaseOrThrow();
+  const channel = supabase
+    .channel(`group-messages-${groupId}`)
+    .on("postgres_changes", {
+      event: "INSERT", schema: "public", table: "group_messages",
+      filter: `group_id=eq.${groupId}`,
+    }, () => onMessageInserted())
+    .subscribe();
+
+  return () => { supabase.removeChannel(channel); };
 }

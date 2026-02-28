@@ -1,3 +1,4 @@
+import { useTheme } from "../theme/ThemeProvider";
 import { View, Text, Pressable } from "react-native";
 import { theme } from "./theme";
 
@@ -22,11 +23,11 @@ export default function ListItem({
         flexDirection: "row",
         alignItems: "center",
         gap: 12,
-        backgroundColor: theme.colors.surface,
+        backgroundColor: "#16161b",
         borderRadius: theme.radius.lg,
         padding: 14,
         borderWidth: 1,
-        borderColor: theme.colors.border,
+        borderColor: "rgba(255,255,255,0.08)",
       }}
     >
       {icon ? (
@@ -35,19 +36,19 @@ export default function ListItem({
             width: 36,
             height: 36,
             borderRadius: 12,
-            backgroundColor: theme.colors.surfaceElevated,
+            backgroundColor: "#1c1c23",
             alignItems: "center",
             justifyContent: "center",
           }}
         >
-          <Text style={{ color: theme.colors.text }}>{icon}</Text>
+          <Text style={{ color: "#ffffff" }}>{icon}</Text>
         </View>
       ) : null}
       <View style={{ flex: 1 }}>
-        <Text style={{ color: theme.colors.text, fontWeight: "800" }}>{title}</Text>
-        {subtitle ? <Text style={{ color: theme.colors.textMuted, marginTop: 4 }}>{subtitle}</Text> : null}
+        <Text style={{ color: "#ffffff", fontWeight: "800" }}>{title}</Text>
+        {subtitle ? <Text style={{ color: "rgba(255,255,255,0.45)", marginTop: 4 }}>{subtitle}</Text> : null}
       </View>
-      {right ? <Text style={{ color: theme.colors.textMuted }}>{right}</Text> : null}
+      {right ? <Text style={{ color: "rgba(255,255,255,0.45)" }}>{right}</Text> : null}
     </Wrapper>
   );
 }

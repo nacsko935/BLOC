@@ -1,3 +1,4 @@
+import { useTheme } from "../../src/core/theme/ThemeProvider";
 import React, { useState } from "react";
 import {
   View,
@@ -80,7 +81,7 @@ export default function EditProfileModal() {
                 value={name}
                 onChangeText={setName}
                 placeholder="Ex: Marie Dupont"
-                placeholderTextColor={theme.colors.textMuted}
+                placeholderTextColor={"rgba(255,255,255,0.45)"}
                 style={styles.input}
                 autoCapitalize="words"
               />
@@ -92,7 +93,7 @@ export default function EditProfileModal() {
                 value={bio}
                 onChangeText={setBio}
                 placeholder="Parlez-nous de vous..."
-                placeholderTextColor={theme.colors.textMuted}
+                placeholderTextColor={"rgba(255,255,255,0.45)"}
                 style={styles.textArea}
                 multiline
                 maxLength={200}
@@ -111,7 +112,7 @@ export default function EditProfileModal() {
                 value={school}
                 onChangeText={setSchool}
                 placeholder="Ex: ESGI Paris"
-                placeholderTextColor={theme.colors.textMuted}
+                placeholderTextColor={"rgba(255,255,255,0.45)"}
                 style={styles.input}
               />
             </View>
@@ -122,7 +123,7 @@ export default function EditProfileModal() {
                 value={level}
                 onChangeText={setLevel}
                 placeholder="Ex: Licence 3, Master 2..."
-                placeholderTextColor={theme.colors.textMuted}
+                placeholderTextColor={"rgba(255,255,255,0.45)"}
                 style={styles.input}
               />
             </View>
@@ -133,7 +134,7 @@ export default function EditProfileModal() {
                 value={campus}
                 onChangeText={setCampus}
                 placeholder="Ex: Paris, Lyon..."
-                placeholderTextColor={theme.colors.textMuted}
+                placeholderTextColor={"rgba(255,255,255,0.45)"}
                 style={styles.input}
               />
             </View>
@@ -144,7 +145,7 @@ export default function EditProfileModal() {
                 value={specialization}
                 onChangeText={setSpecialization}
                 placeholder="Ex: Cybersécurité, IA..."
-                placeholderTextColor={theme.colors.textMuted}
+                placeholderTextColor={"rgba(255,255,255,0.45)"}
                 style={styles.input}
               />
             </View>
@@ -162,7 +163,7 @@ export default function EditProfileModal() {
                 value={skills}
                 onChangeText={setSkills}
                 placeholder="Ex: Python, React, Design..."
-                placeholderTextColor={theme.colors.textMuted}
+                placeholderTextColor={"rgba(255,255,255,0.45)"}
                 style={styles.input}
               />
               {skills.length > 0 && (
@@ -191,7 +192,7 @@ export default function EditProfileModal() {
                 value={linkedin}
                 onChangeText={setLinkedin}
                 placeholder="https://linkedin.com/in/..."
-                placeholderTextColor={theme.colors.textMuted}
+                placeholderTextColor={"rgba(255,255,255,0.45)"}
                 style={styles.input}
                 autoCapitalize="none"
                 keyboardType="url"
@@ -204,7 +205,7 @@ export default function EditProfileModal() {
                 value={github}
                 onChangeText={setGithub}
                 placeholder="https://github.com/..."
-                placeholderTextColor={theme.colors.textMuted}
+                placeholderTextColor={"rgba(255,255,255,0.45)"}
                 style={styles.input}
                 autoCapitalize="none"
                 keyboardType="url"
@@ -217,7 +218,7 @@ export default function EditProfileModal() {
                 value={website}
                 onChangeText={setWebsite}
                 placeholder="https://..."
-                placeholderTextColor={theme.colors.textMuted}
+                placeholderTextColor={"rgba(255,255,255,0.45)"}
                 style={styles.input}
                 autoCapitalize="none"
                 keyboardType="url"
@@ -248,7 +249,7 @@ export default function EditProfileModal() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.bg,
+    backgroundColor: "#000000",
   },
   header: {
     flexDirection: "row",
@@ -257,23 +258,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    borderBottomColor: "rgba(255,255,255,0.08)",
   },
   closeButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: "#111111",
     alignItems: "center",
     justifyContent: "center",
   },
   closeButtonText: {
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 20,
     fontWeight: "600",
   },
   headerTitle: {
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 20,
     fontWeight: "800",
   },
@@ -285,7 +286,7 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   sectionTitle: {
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 18,
     fontWeight: "800",
     marginBottom: 4,
@@ -294,36 +295,36 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   label: {
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 14,
     fontWeight: "700",
   },
   input: {
-    backgroundColor: theme.colors.surface,
+    backgroundColor: "#111111",
     borderRadius: theme.radius.lg,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 15,
     fontWeight: "500",
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: "rgba(255,255,255,0.10)",
   },
   textArea: {
-    backgroundColor: theme.colors.surface,
+    backgroundColor: "#111111",
     borderRadius: theme.radius.lg,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 15,
     fontWeight: "500",
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: "rgba(255,255,255,0.10)",
     minHeight: 100,
     textAlignVertical: "top",
   },
   charCount: {
-    color: theme.colors.textMuted,
+    color: "rgba(255,255,255,0.50)",
     fontSize: 12,
     fontWeight: "600",
     alignSelf: "flex-end",
@@ -335,18 +336,18 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   skillChip: {
-    backgroundColor: theme.colors.accent,
+    backgroundColor: "#6E5CFF",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 999,
   },
   skillChipText: {
-    color: "#ffffff",
+    color: "#FFFFFF",
     fontSize: 12,
     fontWeight: "700",
   },
   saveButton: {
-    backgroundColor: theme.colors.accent,
+    backgroundColor: "#6E5CFF",
     paddingVertical: 16,
     borderRadius: theme.radius.lg,
     alignItems: "center",
@@ -361,7 +362,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   saveButtonText: {
-    color: "#ffffff",
+    color: "#FFFFFF",
     fontSize: 17,
     fontWeight: "800",
   },

@@ -72,7 +72,7 @@ const styles = StyleSheet.create({
     borderRadius: 31,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: theme.colors.accent,
+    backgroundColor: "#6E5CFF",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.18)",
     ...theme.shadow.lg,

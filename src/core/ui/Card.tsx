@@ -1,6 +1,6 @@
+import { useTheme } from "../theme/ThemeProvider";
 import { ReactNode } from "react";
 import { View, ViewStyle, StyleProp } from "react-native";
-import { theme } from "./theme";
 
 type CardVariant = "default" | "elevated" | "outlined";
 
@@ -15,24 +15,26 @@ export default function Card({
   variant?: CardVariant;
   accentColor?: string;
 }) {
+  const { c, isDark } = useTheme();
   const isElevated = variant === "elevated";
   const isOutlined = variant === "outlined";
+
   return (
     <View
       style={[
         {
-          backgroundColor: theme.colors.surface,
+          backgroundColor: c.card,
           borderRadius: 20,
           padding: 16,
           borderWidth: 1,
-          borderColor: isOutlined ? theme.colors.borderStrong : theme.colors.border,
+          borderColor: isOutlined ? c.borderStrong : c.border,
           shadowColor: "#000",
-          shadowOpacity: isElevated ? 0.25 : 0.16,
+          shadowOpacity: isDark ? (isElevated ? 0.25 : 0.16) : (isElevated ? 0.08 : 0.04),
           shadowRadius: isElevated ? 14 : 8,
           shadowOffset: { width: 0, height: isElevated ? 8 : 4 },
           elevation: isElevated ? 7 : 3,
           borderLeftWidth: accentColor ? 3 : 1,
-          borderLeftColor: accentColor ?? (isOutlined ? theme.colors.borderStrong : theme.colors.border),
+          borderLeftColor: accentColor ?? (isOutlined ? c.borderStrong : c.border),
         },
         style,
       ]}

@@ -1,3 +1,4 @@
+import { useTheme } from "../theme/ThemeProvider";
 import { PropsWithChildren, useCallback, useState } from "react";
 import { ActivityIndicator, Pressable, PressableProps, StyleProp, ViewStyle } from "react-native";
 import * as Haptics from "expo-haptics";
@@ -51,13 +52,13 @@ export function AppButton({
       onPress={handlePress}
       style={({ pressed }) => [
         {
-          backgroundColor: isPrimary ? theme.colors.accent : theme.colors.surfaceElevated,
+          backgroundColor: isPrimary ? "#6E5CFF" : "#1c1c23",
           borderRadius: 18,
           minHeight: 42,
           paddingHorizontal: 16,
           paddingVertical: 10,
           borderWidth: isPrimary ? 0 : 1,
-          borderColor: theme.colors.borderStrong,
+          borderColor: "rgba(255,255,255,0.14)",
           opacity: isDisabled ? 0.5 : pressed ? 0.9 : 1,
           transform: [{ scale: pressed ? 0.98 : 1 }],
           alignItems: "center",
@@ -67,9 +68,9 @@ export function AppButton({
       ]}
     >
       {loading || pending ? (
-        <ActivityIndicator color={isPrimary ? "#fff" : theme.colors.text} />
+        <ActivityIndicator color={isPrimary ? "#fff" : "#ffffff"} />
       ) : (
-        <AppText style={{ textAlign: "center", color: isPrimary ? "#fff" : theme.colors.text, fontWeight: "700" }}>
+        <AppText style={{ textAlign: "center", color: isPrimary ? "#fff" : "#ffffff", fontWeight: "700" }}>
           {children}
         </AppText>
       )}

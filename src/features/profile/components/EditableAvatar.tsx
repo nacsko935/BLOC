@@ -1,3 +1,4 @@
+import { useTheme } from "../../../core/theme/ThemeProvider";
 import { Pressable, View } from "react-native";
 import { Image } from "expo-image";
 import { AppText } from "../../../core/ui/AppText";
@@ -25,7 +26,7 @@ export function EditableAvatar({
             width: size,
             height: size,
             borderRadius: r,
-            backgroundColor: theme.colors.surfaceElevated,
+            backgroundColor: "#1c1c23",
             alignItems: "center",
             justifyContent: "center",
           }}
@@ -42,11 +43,11 @@ export function EditableAvatar({
           width: 28,
           height: 28,
           borderRadius: 14,
-          backgroundColor: theme.colors.accent,
+          backgroundColor: "#6E5CFF",
           alignItems: "center",
           justifyContent: "center",
           borderWidth: 2,
-          borderColor: theme.colors.surface,
+          borderColor: "#16161b",
         }}
       >
         <AppText style={{ color: "#fff", fontSize: 13 }}>✎</AppText>

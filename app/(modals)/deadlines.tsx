@@ -1,3 +1,4 @@
+import { useTheme } from "../../src/core/theme/ThemeProvider";
 import React, { useState } from "react";
 import {
   View,
@@ -176,7 +177,7 @@ export default function DeadlinesScreen() {
           value={searchQuery}
           onChangeText={setSearchQuery}
           placeholder="Rechercher une deadline..."
-          placeholderTextColor={theme.colors.textMuted}
+          placeholderTextColor={"rgba(255,255,255,0.45)"}
           style={styles.searchInput}
         />
         {searchQuery.length > 0 && (
@@ -346,7 +347,7 @@ export default function DeadlinesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.bg,
+    backgroundColor: "#000000",
   },
   header: {
     flexDirection: "row",
@@ -359,17 +360,17 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: "#111111",
     alignItems: "center",
     justifyContent: "center",
   },
   backButtonText: {
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 24,
     fontWeight: "600",
   },
   headerTitle: {
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 20,
     fontWeight: "800",
   },
@@ -377,12 +378,12 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: theme.colors.accent,
+    backgroundColor: "#6E5CFF",
     alignItems: "center",
     justifyContent: "center",
   },
   addButtonText: {
-    color: "#ffffff",
+    color: "#FFFFFF",
     fontSize: 28,
     fontWeight: "300",
     lineHeight: 28,
@@ -395,35 +396,35 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: "#111111",
     borderRadius: theme.radius.lg,
     padding: 16,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: "rgba(255,255,255,0.10)",
   },
   statValue: {
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 28,
     fontWeight: "800",
     marginBottom: 4,
   },
   statLabel: {
-    color: theme.colors.textMuted,
+    color: "rgba(255,255,255,0.50)",
     fontSize: 11,
     fontWeight: "600",
   },
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: theme.colors.surface,
+    backgroundColor: "#111111",
     borderRadius: theme.radius.lg,
     paddingHorizontal: 16,
     paddingVertical: 12,
     marginHorizontal: 20,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: "rgba(255,255,255,0.10)",
   },
   searchIcon: {
     fontSize: 16,
@@ -431,12 +432,12 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 15,
     fontWeight: "600",
   },
   clearButton: {
-    color: theme.colors.textMuted,
+    color: "rgba(255,255,255,0.50)",
     fontSize: 18,
     padding: 4,
   },
@@ -451,22 +452,22 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 12,
     borderRadius: theme.radius.md,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: "#111111",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: "rgba(255,255,255,0.10)",
   },
   filterButtonActive: {
-    backgroundColor: theme.colors.accent,
-    borderColor: theme.colors.accent,
+    backgroundColor: "#6E5CFF",
+    borderColor: "#6E5CFF",
   },
   filterButtonText: {
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 13,
     fontWeight: "700",
   },
   filterButtonTextActive: {
-    color: "#ffffff",
+    color: "#FFFFFF",
   },
   listContainer: {
     flex: 1,
@@ -478,12 +479,12 @@ const styles = StyleSheet.create({
   deadlineCard: {
     flexDirection: "row",
     alignItems: "flex-start",
-    backgroundColor: theme.colors.surface,
+    backgroundColor: "#111111",
     borderRadius: theme.radius.lg,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: "rgba(255,255,255,0.10)",
     gap: 12,
   },
   deadlineCardCompleted: {
@@ -506,17 +507,17 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: theme.colors.border,
+    borderColor: "rgba(255,255,255,0.10)",
     alignItems: "center",
     justifyContent: "center",
     marginTop: 2,
   },
   checkboxChecked: {
-    backgroundColor: theme.colors.accent,
-    borderColor: theme.colors.accent,
+    backgroundColor: "#6E5CFF",
+    borderColor: "#6E5CFF",
   },
   checkboxCheck: {
-    color: "#ffffff",
+    color: "#FFFFFF",
     fontSize: 14,
     fontWeight: "800",
   },
@@ -525,22 +526,22 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   deadlineTitle: {
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "700",
     lineHeight: 22,
   },
   deadlineTitleCompleted: {
     textDecorationLine: "line-through",
-    color: theme.colors.textMuted,
+    color: "rgba(255,255,255,0.50)",
   },
   deadlineCourse: {
-    color: theme.colors.accent,
+    color: "#6E5CFF",
     fontSize: 13,
     fontWeight: "600",
   },
   deadlineDescription: {
-    color: theme.colors.textMuted,
+    color: "rgba(255,255,255,0.50)",
     fontSize: 13,
     fontWeight: "500",
     lineHeight: 18,
@@ -561,12 +562,12 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
   deadlineTime: {
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 12,
     fontWeight: "600",
   },
   deadlineTimeCompleted: {
-    color: theme.colors.textMuted,
+    color: "rgba(255,255,255,0.50)",
   },
   emptyState: {
     alignItems: "center",
@@ -577,13 +578,13 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   emptyStateTitle: {
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 20,
     fontWeight: "800",
     marginBottom: 8,
   },
   emptyStateText: {
-    color: theme.colors.textMuted,
+    color: "rgba(255,255,255,0.50)",
     fontSize: 14,
     textAlign: "center",
     lineHeight: 20,

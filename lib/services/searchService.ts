@@ -1,49 +1,36 @@
 import { getSupabaseOrThrow } from "../supabase";
+import { Profile, FeedPost } from "../../types/db";
 
-export async function searchUsers(q: string) {
+export async function searchUsers(query: string): Promise<Profile[]> {
+  if (!query.trim()) return [];
   const supabase = getSupabaseOrThrow();
-  const term = q.trim();
-  if (!term) return [];
-
   const { data, error } = await supabase
     .from("profiles")
-    .select("id,username,full_name,filiere,niveau")
-    .or(`username.ilike.%${term}%,full_name.ilike.%${term}%`)
-    .limit(20);
+    .select("id,username,full_name,bio,filiere,niveau,avatar_url")
+    .or(`username.ilike.%${query}%,full_name.ilike.%${query}%`)
+    .limit(10);
   if (error) throw error;
-  return data ?? [];
+  return (data as Profile[]) ?? [];
 }
 
-export async function searchGroups(q: string) {
+export async function searchPosts(query: string): Promise<FeedPost[]> {
+  if (!query.trim()) return [];
   const supabase = getSupabaseOrThrow();
-  const term = q.trim();
-  if (!term) return [];
-
   const { data, error } = await supabase
-    .from("conversations")
-    .select("id,title,description,filiere,privacy")
-    .eq("type", "group")
-    .or(`title.ilike.%${term}%,description.ilike.%${term}%`)
-    .limit(20);
-  if (error) throw error;
-  return data ?? [];
-}
-
-export async function searchPosts(q: string, filiere?: string) {
-  const supabase = getSupabaseOrThrow();
-  const term = q.trim();
-  if (!term) return [];
-
-  let query = supabase
     .from("posts")
-    .select("id,title,content,filiere,created_at,author_id")
-    .or(`title.ilike.%${term}%,content.ilike.%${term}%`)
+    .select(`id, author_id, title, content, type, filiere, created_at, attachment_url,
+      author:profiles!posts_author_id_fkey(id,username,full_name,bio,filiere,niveau,avatar_url),
+      likes_count, comments_count, saves_count`)
+    .or(`title.ilike.%${query}%,content.ilike.%${query}%`)
     .order("created_at", { ascending: false })
     .limit(20);
-
-  if (filiere) query = query.eq("filiere", filiere);
-
-  const { data, error } = await query;
   if (error) throw error;
-  return data ?? [];
+  return (data ?? []).map((p: any) => ({
+    ...p,
+    likesCount:    p.likes_count    ?? 0,
+    commentsCount: p.comments_count ?? 0,
+    savesCount:    p.saves_count    ?? 0,
+    likedByMe:     false,
+    savedByMe:     false,
+  })) as FeedPost[];
 }

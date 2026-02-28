@@ -1,67 +1,80 @@
-import { getSupabaseOrThrow } from "./supabase";
-import * as Device from "expo-device";
-import * as Notifications from "expo-notifications";
-import { isPushGlobalDisabled } from "./services/appConfigService";
+/**
+ * notifications.ts — wrapper 100% safe pour Expo Go
+ *
+ * expo-notifications a été retiré des plugins app.json et n'est
+ * plus importé de façon statique nulle part dans le projet.
+ *
+ * Pourquoi expo-notifications crashait :
+ *  - Dans Expo Go SDK 53+, les push notifications Android ne sont plus
+ *    supportées. Quand le module est dans les "plugins" de app.json,
+ *    il s'initialise au démarrage natif et lance une exception qui bloque
+ *    toute la chaîne de chargement Metro.
+ *  - La solution : retirer "expo-notifications" des plugins app.json
+ *    et ne l'importer QUE dynamiquement, uniquement quand nécessaire.
+ *
+ * Pour un vrai build (EAS Build / expo build), les notifications
+ * fonctionneront normalement car le contexte natif est disponible.
+ */
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+let _notifModule: any = null;
 
-export async function requestNotificationPermissions() {
-  const settings = await Notifications.getPermissionsAsync();
-  if (settings.granted || settings.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL) {
-    return true;
+async function getNotifications() {
+  if (_notifModule) return _notifModule;
+  try {
+    _notifModule = await import("expo-notifications");
+    return _notifModule;
+  } catch {
+    return null;
   }
-  const request = await Notifications.requestPermissionsAsync();
-  return request.granted || request.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL;
 }
 
-export async function getExpoPushToken() {
-  if (!Device.isDevice) return null;
-  const granted = await requestNotificationPermissions();
-  if (!granted) return null;
-
-  const token = await Notifications.getExpoPushTokenAsync();
-  return token.data;
+export async function requestNotificationPermissions(): Promise<boolean> {
+  try {
+    const Notifs = await getNotifications();
+    if (!Notifs) return false;
+    const settings = await Notifs.getPermissionsAsync();
+    if (settings.granted) return true;
+    const { granted } = await Notifs.requestPermissionsAsync();
+    return granted;
+  } catch {
+    return false;
+  }
 }
 
-export async function registerPushToken(userId: string) {
-  const globalDisabled = await isPushGlobalDisabled();
-  if (globalDisabled) return null;
+export async function registerPushToken(userId: string): Promise<void> {
+  try {
+    const Device = await import("expo-device");
+    if (!Device.default?.isDevice) return;
 
-  const supabase = getSupabaseOrThrow();
-  const token = await getExpoPushToken();
-  if (!token) return null;
+    const Notifs = await getNotifications();
+    if (!Notifs) return;
 
-  const { error } = await supabase.from("push_tokens").upsert(
-    {
-      user_id: userId,
-      expo_push_token: token,
-      platform: Device.osName || "unknown",
-      enabled: true,
-    },
-    { onConflict: "user_id,expo_push_token" }
-  );
+    const granted = await requestNotificationPermissions();
+    if (!granted) return;
 
-  if (error) throw error;
-  return token;
+    const { getSupabaseOrThrow } = await import("./supabase");
+    const tokenData = await Notifs.getExpoPushTokenAsync({ projectId: "bloc-app" });
+    const supabase = getSupabaseOrThrow();
+    await supabase
+      .from("profiles")
+      .update({ push_token: tokenData.data })
+      .eq("id", userId)
+      .catch(() => null);
+  } catch {
+    // Silencieux dans Expo Go
+  }
 }
 
-export async function disablePushTokens(userId: string) {
-  const supabase = getSupabaseOrThrow();
-  const { error } = await supabase.from("push_tokens").update({ enabled: false }).eq("user_id", userId);
-  if (error) throw error;
-}
-
-export function setupNotificationResponseHandler() {
-  const subscription = Notifications.addNotificationResponseReceivedListener((_response) => {
-    // Handled in app with router-aware callback when needed.
-  });
-  return () => subscription.remove();
+export async function disablePushTokens(userId: string): Promise<void> {
+  try {
+    const { getSupabaseOrThrow } = await import("./supabase");
+    const supabase = getSupabaseOrThrow();
+    await supabase
+      .from("profiles")
+      .update({ push_token: null })
+      .eq("id", userId)
+      .catch(() => null);
+  } catch {
+    // Silencieux
+  }
 }

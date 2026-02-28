@@ -1,3 +1,4 @@
+import { useTheme } from "../../src/core/theme/ThemeProvider";
 import React, { useState } from "react";
 import {
   View,
@@ -185,7 +186,7 @@ export default function FlashcardsModal() {
           ]}
         >
           <Text style={styles.actionButtonIcon}>✓</Text>
-          <Text style={[styles.actionButtonText, { color: "#ffffff" }]}>
+          <Text style={[styles.actionButtonText, { color: c.textPrimary }]}>
             Je connais
           </Text>
         </Pressable>
@@ -210,7 +211,7 @@ export default function FlashcardsModal() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.bg,
+    backgroundColor: "#000000",
   },
   header: {
     flexDirection: "row",
@@ -223,12 +224,12 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: "#111111",
     alignItems: "center",
     justifyContent: "center",
   },
   closeButtonText: {
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 20,
     fontWeight: "600",
   },
@@ -236,19 +237,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   headerTitle: {
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 20,
     fontWeight: "800",
   },
   headerSubtitle: {
-    color: theme.colors.textMuted,
+    color: "rgba(255,255,255,0.50)",
     fontSize: 14,
     fontWeight: "600",
     marginTop: 2,
   },
   progressBarContainer: {
     height: 4,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: "#111111",
     marginHorizontal: 20,
     borderRadius: 2,
     overflow: "hidden",
@@ -287,7 +288,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     width: "100%",
     height: "100%",
-    backgroundColor: theme.colors.surface,
+    backgroundColor: "#111111",
     borderRadius: theme.radius.xl,
     padding: 32,
     justifyContent: "center",
@@ -296,7 +297,7 @@ const styles = StyleSheet.create({
     backfaceVisibility: "hidden",
   },
   cardFront: {
-    backgroundColor: theme.colors.surface,
+    backgroundColor: "#111111",
   },
   cardBack: {
     backgroundColor: "#007aff",
@@ -305,7 +306,7 @@ const styles = StyleSheet.create({
     opacity: 0,
   },
   cardLabel: {
-    color: theme.colors.textMuted,
+    color: "rgba(255,255,255,0.50)",
     fontSize: 14,
     fontWeight: "700",
     textTransform: "uppercase",
@@ -313,7 +314,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   cardText: {
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 24,
     fontWeight: "700",
     textAlign: "center",
@@ -322,7 +323,7 @@ const styles = StyleSheet.create({
   tapHint: {
     position: "absolute",
     bottom: 24,
-    color: theme.colors.textMuted,
+    color: "rgba(255,255,255,0.50)",
     fontSize: 12,
     fontWeight: "500",
   },
@@ -347,7 +348,7 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.98 }],
   },
   unknownButton: {
-    backgroundColor: theme.colors.surface,
+    backgroundColor: "#111111",
   },
   knownButton: {
     backgroundColor: "#34c759",
@@ -356,7 +357,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
   },
   actionButtonText: {
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "700",
   },
@@ -372,12 +373,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   statValue: {
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 32,
     fontWeight: "800",
   },
   statLabel: {
-    color: theme.colors.textMuted,
+    color: "rgba(255,255,255,0.50)",
     fontSize: 12,
     fontWeight: "600",
     marginTop: 4,
@@ -385,6 +386,6 @@ const styles = StyleSheet.create({
   statDivider: {
     width: 1,
     height: 40,
-    backgroundColor: theme.colors.border,
+    backgroundColor: "rgba(255,255,255,0.08)",
   },
 });

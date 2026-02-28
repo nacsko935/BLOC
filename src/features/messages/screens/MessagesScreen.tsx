@@ -1,3 +1,4 @@
+import { useTheme } from "../../../core/theme/ThemeProvider";
 ﻿import { memo, useCallback, useMemo, useRef, useState } from "react";
 import { View, TextInput, StyleSheet, Animated } from "react-native";
 import { useRouter } from "expo-router";
@@ -80,6 +81,7 @@ function formatTime(date: string): string {
 }
 
 export default function MessagesScreen() {
+  const { c } = useTheme();
   const router = useRouter();
   const { conversations } = useConversations();
   const [searchQuery, setSearchQuery] = useState("");
@@ -121,7 +123,7 @@ export default function MessagesScreen() {
             value={searchQuery}
             onChangeText={setSearchQuery}
             placeholder="Rechercher une conversation..."
-            placeholderTextColor={theme.colors.textMuted}
+            placeholderTextColor={"rgba(255,255,255,0.45)"}
             style={styles.searchInput}
           />
           {searchQuery.length > 0 ? (
@@ -162,25 +164,25 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: "rgba(255,255,255,0.10)",
   },
   searchIcon: { fontSize: 16, marginRight: 8 },
   searchInput: {
     flex: 1,
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 15,
     fontWeight: "600",
   },
-  clearButton: { color: theme.colors.textMuted, fontSize: 20, padding: 2 },
+  clearButton: { color: "rgba(255,255,255,0.50)", fontSize: 20, padding: 2 },
   listContent: { paddingBottom: 80 },
   conversationItem: {
     flexDirection: "row",
     padding: 14,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: "#111111",
     borderRadius: theme.radius.lg,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: "rgba(255,255,255,0.10)",
   },
   avatarContainer: { position: "relative", marginRight: 12 },
   onlineIndicator: {
@@ -190,9 +192,9 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: theme.colors.success,
+    backgroundColor: "#34c759",
     borderWidth: 2,
-    borderColor: theme.colors.surface,
+    borderColor: "#16161b",
   },
   conversationContent: { flex: 1 },
   conversationHeader: {
@@ -202,8 +204,8 @@ const styles = StyleSheet.create({
   },
   conversationName: { fontWeight: "700" },
   conversationNameUnread: { fontWeight: "800" },
-  conversationTime: { color: theme.colors.textMuted },
-  conversationTimeUnread: { color: theme.colors.accent },
+  conversationTime: { color: "rgba(255,255,255,0.50)" },
+  conversationTimeUnread: { color: "#6E5CFF" },
   conversationFooter: {
     flexDirection: "row",
     marginTop: 4,
@@ -212,12 +214,12 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   conversationMessage: { flex: 1 },
-  conversationMessageUnread: { color: theme.colors.text },
+  conversationMessageUnread: { color: "#FFFFFF" },
   unreadBadge: {
     minWidth: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: theme.colors.accent,
+    backgroundColor: "#6E5CFF",
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 6,

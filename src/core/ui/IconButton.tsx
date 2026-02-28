@@ -1,3 +1,4 @@
+import { useTheme } from "../theme/ThemeProvider";
 import { PropsWithChildren } from "react";
 import { Pressable, StyleProp, StyleSheet, View, ViewStyle } from "react-native";
 import { theme } from "./theme";
@@ -29,8 +30,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surfaceAlt,
+    borderColor: "rgba(255,255,255,0.08)",
+    backgroundColor: "#1c1c23",
   },
   pressed: {
     opacity: 0.88,
@@ -51,7 +52,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: theme.colors.danger,
+    backgroundColor: "#ff3b30",
   },
 });
 

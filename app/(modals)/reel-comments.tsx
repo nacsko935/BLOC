@@ -1,3 +1,4 @@
+import { useTheme } from "../../src/core/theme/ThemeProvider";
 import React, { useState, useRef } from "react";
 import {
   View,
@@ -59,6 +60,7 @@ const mockComments: Comment[] = [
 ];
 
 export default function ReelCommentsModal() {
+  const { c } = useTheme();
   const router = useRouter();
   const params = useLocalSearchParams();
   const [comments, setComments] = useState<Comment[]>(mockComments);
@@ -211,7 +213,7 @@ export default function ReelCommentsModal() {
                 value={newComment}
                 onChangeText={setNewComment}
                 placeholder="Ajouter un commentaire..."
-                placeholderTextColor={theme.colors.textMuted}
+                placeholderTextColor={"rgba(255,255,255,0.45)"}
                 style={styles.input}
                 multiline
                 maxLength={300}
@@ -242,7 +244,7 @@ const styles = StyleSheet.create({
   },
   modal: {
     flex: 1,
-    backgroundColor: theme.colors.bg,
+    backgroundColor: "#000000",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     overflow: "hidden",
@@ -251,12 +253,12 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    borderBottomColor: "rgba(255,255,255,0.08)",
   },
   dragIndicator: {
     width: 40,
     height: 4,
-    backgroundColor: theme.colors.border,
+    backgroundColor: "rgba(255,255,255,0.08)",
     borderRadius: 2,
     alignSelf: "center",
     marginBottom: 12,
@@ -268,7 +270,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   headerTitle: {
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 18,
     fontWeight: "800",
   },
@@ -276,12 +278,12 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: "#111111",
     alignItems: "center",
     justifyContent: "center",
   },
   closeButtonText: {
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 18,
     fontWeight: "600",
   },
@@ -298,12 +300,12 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: "#111111",
     alignItems: "center",
     justifyContent: "center",
   },
   commentAvatarText: {
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "800",
   },
@@ -322,7 +324,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   commentAuthor: {
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 14,
     fontWeight: "700",
   },
@@ -336,12 +338,12 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
   commentTimestamp: {
-    color: theme.colors.textMuted,
+    color: "rgba(255,255,255,0.50)",
     fontSize: 12,
     fontWeight: "500",
   },
   commentText: {
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 15,
     lineHeight: 20,
     fontWeight: "400",
@@ -361,14 +363,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   commentActionText: {
-    color: theme.colors.textMuted,
+    color: "rgba(255,255,255,0.50)",
     fontSize: 13,
     fontWeight: "600",
   },
   inputContainer: {
     borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
-    backgroundColor: theme.colors.bg,
+    borderTopColor: "rgba(255,255,255,0.08)",
+    backgroundColor: "#000000",
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
@@ -376,14 +378,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-end",
     gap: 12,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: "#111111",
     borderRadius: 24,
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
   input: {
     flex: 1,
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 15,
     maxHeight: 100,
     paddingVertical: 8,
@@ -397,10 +399,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   sendButtonDisabled: {
-    backgroundColor: theme.colors.border,
+    backgroundColor: "rgba(255,255,255,0.08)",
   },
   sendButtonText: {
-    color: "#ffffff",
+    color: "#FFFFFF",
     fontSize: 18,
     fontWeight: "800",
   },

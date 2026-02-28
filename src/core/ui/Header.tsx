@@ -1,3 +1,4 @@
+import { useTheme } from "../theme/ThemeProvider";
 import { View, Text, Pressable } from "react-native";
 import { theme } from "./theme";
 
@@ -12,11 +13,11 @@ export default function Header({
 }) {
   return (
     <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-      <Text style={{ color: theme.colors.text, fontSize: 28, fontWeight: "800" }}>{title}</Text>
+      <Text style={{ color: "#ffffff", fontSize: 28, fontWeight: "800" }}>{title}</Text>
 
       {rightText ? (
         <Pressable onPress={onRightPress}>
-          <Text style={{ color: theme.colors.textMuted, fontWeight: "700" }}>{rightText}</Text>
+          <Text style={{ color: "rgba(255,255,255,0.45)", fontWeight: "700" }}>{rightText}</Text>
         </Pressable>
       ) : (
         <View />

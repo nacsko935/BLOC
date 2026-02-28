@@ -10,19 +10,27 @@ async function requireUserId() {
 }
 
 export async function fetchBlockedUserIds() {
-  const supabase = getSupabaseOrThrow();
-  const userId = await requireUserId();
-  const { data, error } = await supabase.from("blocks").select("blocked_id").eq("blocker_id", userId);
-  if (error) throw error;
-  return (data ?? []).map((row) => row.blocked_id as string);
+  try {
+    const supabase = getSupabaseOrThrow();
+    const userId = await requireUserId();
+    const { data, error } = await supabase.from("blocks").select("blocked_id").eq("blocker_id", userId);
+    if (error) return []; // table n'existe pas encore → pas bloquant
+    return (data ?? []).map((row) => row.blocked_id as string);
+  } catch {
+    return [];
+  }
 }
 
 export async function fetchHiddenPostIds() {
-  const supabase = getSupabaseOrThrow();
-  const userId = await requireUserId();
-  const { data, error } = await supabase.from("hidden_posts").select("post_id").eq("user_id", userId);
-  if (error) throw error;
-  return (data ?? []).map((row) => row.post_id as string);
+  try {
+    const supabase = getSupabaseOrThrow();
+    const userId = await requireUserId();
+    const { data, error } = await supabase.from("hidden_posts").select("post_id").eq("user_id", userId);
+    if (error) return []; // table n'existe pas encore → pas bloquant
+    return (data ?? []).map((row) => row.post_id as string);
+  } catch {
+    return [];
+  }
 }
 
 export async function blockUser(blockedId: string) {

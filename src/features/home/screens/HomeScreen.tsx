@@ -1,258 +1,379 @@
 import { Href, useRouter } from "expo-router";
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 import {
-  Alert,
-  ActivityIndicator,
-  FlatList,
-  Modal,
-  Pressable,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
+  ActivityIndicator, Alert, FlatList, Image, Modal,
+  Pressable, RefreshControl, Share, Text, TextInput, View,
 } from "react-native";
-import { colors } from "../../../../constants/colors";
-import { HomeHeader } from "../../../components/HomeHeader";
+import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTheme } from "../../../core/theme/ThemeProvider";
 import { PostCard } from "../../../components/PostCard";
 import { TrendCard } from "../../../components/TrendCard";
-import { FeedPost, PostType } from "../../../../types/db";
+import { FeedPost } from "../../../../types/db";
 import { trendsMock, TrendItem } from "../homeMock";
 import { useFeedStore } from "../../../../state/useFeedStore";
 import { useAuthStore } from "../../../../state/useAuthStore";
+import { useNotificationsStore } from "../../../../state/useNotificationsStore";
 import { blockUser, hidePost, reportTarget } from "../../../../lib/services/moderationService";
-import { AppButton } from "../../../core/ui/AppButton";
+import { searchUsers, searchPosts } from "../../../../lib/services/searchService";
 import { seedInitialContentIfEmptyDev } from "../../../../lib/dev/seed";
 
+// Posts de démonstration affichés quand Supabase est vide/non configuré
+const DEMO_FEED_POSTS: FeedPost[] = [
+  { id:"demo-1", author_id:"bot-1", filiere:"Informatique", title:"QCM Sécurité Réseaux – Corrigé", content:"15 questions sur les firewalls, VPN et protocoles SSL/TLS. Niveau partiel.", type:"qcm", attachment_url:null, created_at:new Date().toISOString(),
+    author:{ id:"bot-1", username:"prof.martin", full_name:"Prof. Martin", avatar_url:null, filiere:"Informatique", niveau:"L3", bio:null },
+    likesCount:42, commentsCount:7, savesCount:5, likedByMe:false, savedByMe:false },
+  { id:"demo-2", author_id:"bot-2", filiere:"Développement", title:"Fiche React Native – Hooks essentiels", content:"useState, useEffect, useCallback et useRef condensés en 1 page. Patterns de navigation inclus.", type:"pdf", attachment_url:null, created_at:new Date(Date.now()-3600000).toISOString(),
+    author:{ id:"bot-2", username:"nadia.dev", full_name:"Nadia Selmi", avatar_url:null, filiere:"Développement", niveau:"L3", bio:null },
+    likesCount:28, commentsCount:4, savesCount:11, likedByMe:false, savedByMe:false },
+  { id:"demo-3", author_id:"bot-3", filiere:"Général", title:"Checklist candidature alternance 📋", content:"Template de suivi de candidature + relances RH en 3 étapes. Utilisé par +200 étudiants l'an dernier.", type:"text", attachment_url:null, created_at:new Date(Date.now()-7200000).toISOString(),
+    author:{ id:"bot-3", username:"bloc.team", full_name:"Équipe BLOC", avatar_url:null, filiere:"Général", niveau:"L2", bio:null },
+    likesCount:89, commentsCount:12, savesCount:34, likedByMe:false, savedByMe:false },
+  { id:"demo-4", author_id:"bot-4", filiere:"IA / Data", title:"QCM IA Générative – 20 questions", content:"Questions sur les prompts, hallucinations et évaluation de modèles. Idéal pour se préparer à l'exam.", type:"qcm", attachment_url:null, created_at:new Date(Date.now()-10800000).toISOString(),
+    author:{ id:"bot-4", username:"leila.ai", full_name:"Leila AI", avatar_url:null, filiere:"IA / Data", niveau:"M1", bio:null },
+    likesCount:56, commentsCount:9, savesCount:22, likedByMe:false, savedByMe:false },
+  { id:"demo-5", author_id:"bot-5", filiere:"Informatique", title:"Résumé SGBD – Jointures & Transactions", content:"Plan compact pour couvrir jointures, index et transactions avant le partiel. 8 pages.", type:"pdf", attachment_url:null, created_at:new Date(Date.now()-14400000).toISOString(),
+    author:{ id:"bot-5", username:"samir.ds", full_name:"Samir DS", avatar_url:null, filiere:"Informatique", niveau:"L3", bio:null },
+    likesCount:31, commentsCount:3, savesCount:8, likedByMe:false, savedByMe:false },
+  { id:"demo-6", author_id:"bot-6", filiere:"Développement", title:"💡 Astuce : Git rebase vs merge", content:"Quand utiliser rebase pour garder un historique propre, et quand merge est préférable. Exemples concrets inclus.", type:"text", attachment_url:null, created_at:new Date(Date.now()-18000000).toISOString(),
+    author:{ id:"bot-6", username:"karim.code", full_name:"Karim Code", avatar_url:null, filiere:"Développement", niveau:"M1", bio:null },
+    likesCount:63, commentsCount:14, savesCount:19, likedByMe:false, savedByMe:false },
+  { id:"demo-7", author_id:"bot-7", filiere:"Cybersécurité", title:"Top 10 failles OWASP – Résumé 2025", content:"Injection SQL, XSS, CSRF… Les 10 vulnérabilités web les plus critiques expliquées en langage clair.", type:"pdf", attachment_url:null, created_at:new Date(Date.now()-21600000).toISOString(),
+    author:{ id:"bot-7", username:"sec.watcher", full_name:"Sec Watcher", avatar_url:null, filiere:"Cybersécurité", niveau:"M2", bio:null },
+    likesCount:101, commentsCount:18, savesCount:47, likedByMe:false, savedByMe:false },
+  { id:"demo-8", author_id:"bot-8", filiere:"Général", title:"🧠 Comment mémoriser 2× plus vite", content:"Technique de la répétition espacée + méthode Feynman appliquée aux révisions. Résultats prouvés en 3 semaines.", type:"text", attachment_url:null, created_at:new Date(Date.now()-25200000).toISOString(),
+    author:{ id:"bot-8", username:"studylab", full_name:"Study Lab", avatar_url:null, filiere:"Général", niveau:"L2", bio:null },
+    likesCount:154, commentsCount:22, savesCount:88, likedByMe:false, savedByMe:false },
+];
+
+
+/* ── Skeleton card ─────────────────────────────────────────────── */
+function SkeletonPost({ c }: { c: any }) {
+  return (
+    <View style={{ backgroundColor: c.card, borderBottomWidth: 1, borderBottomColor: c.border, padding: 16 }}>
+      <View style={{ flexDirection: "row", gap: 12, marginBottom: 12 }}>
+        <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: c.cardAlt }} />
+        <View style={{ gap: 8, flex: 1 }}>
+          <View style={{ height: 14, width: "50%", borderRadius: 7, backgroundColor: c.cardAlt }} />
+          <View style={{ height: 12, width: "30%", borderRadius: 6, backgroundColor: c.cardAlt }} />
+        </View>
+      </View>
+      <View style={{ gap: 6 }}>
+        <View style={{ height: 13, width: "95%", borderRadius: 6, backgroundColor: c.cardAlt }} />
+        <View style={{ height: 13, width: "80%", borderRadius: 6, backgroundColor: c.cardAlt }} />
+        <View style={{ height: 13, width: "60%", borderRadius: 6, backgroundColor: c.cardAlt }} />
+      </View>
+    </View>
+  );
+}
+
+/* ── Modal recherche ─────────────────────────────────────────────── */
+function SearchModal({ visible, onClose, c }: { visible: boolean; onClose: () => void; c: any }) {
+  const [query,   setQuery]   = useState("");
+  const [users,   setUsers]   = useState<any[]>([]);
+  const [posts,   setPosts]   = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [tab,     setTab]     = useState<"users"|"posts">("users");
+
+  useEffect(() => {
+    if (visible) { setQuery(""); setUsers([]); setPosts([]); }
+  }, [visible]);
+
+  useEffect(() => {
+    if (!query.trim()) { setUsers([]); setPosts([]); return; }
+    const t = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const [u, p] = await Promise.all([searchUsers(query), searchPosts(query)]);
+        setUsers(u); setPosts(p);
+      } catch {} finally { setLoading(false); }
+    }, 300);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  return (
+    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+      <View style={{ flex: 1, backgroundColor: c.background }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingTop: 56, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: c.border }}>
+          <Pressable onPress={onClose} style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: c.cardAlt, alignItems: "center", justifyContent: "center" }}>
+            <Ionicons name="arrow-back" size={20} color={c.textPrimary} />
+          </Pressable>
+          <TextInput autoFocus value={query} onChangeText={setQuery} placeholder="Chercher utilisateurs ou publications…" placeholderTextColor={c.textSecondary}
+            style={{ flex: 1, backgroundColor: c.cardAlt, borderRadius: 14, borderWidth: 1, borderColor: c.border, paddingHorizontal: 14, height: 42, color: c.textPrimary, fontSize: 15 }} autoCapitalize="none" />
+          {loading && <ActivityIndicator color={c.accentPurple} size="small" />}
+        </View>
+        <View style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: c.border }}>
+          {(["users", "posts"] as const).map(t => (
+            <Pressable key={t} onPress={() => setTab(t)} style={{ flex: 1, paddingVertical: 13, alignItems: "center", borderBottomWidth: 2, borderBottomColor: tab === t ? c.accentPurple : "transparent" }}>
+              <Text style={{ color: tab === t ? c.accentPurple : c.textSecondary, fontWeight: "700", fontSize: 14 }}>
+                {t === "users" ? `Utilisateurs (${users.length})` : `Publications (${posts.length})`}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+        <FlatList
+          data={tab === "users" ? users : posts}
+          keyExtractor={i => i.id}
+          contentContainerStyle={{ padding: 16, gap: 10 }}
+          ListEmptyComponent={
+            <View style={{ alignItems: "center", paddingTop: 40, gap: 8 }}>
+              <Ionicons name="search-outline" size={38} color={c.textSecondary} />
+              <Text style={{ color: c.textSecondary, fontSize: 15 }}>
+                {query.trim() ? `Aucun résultat pour "${query}"` : "Commence à taper…"}
+              </Text>
+            </View>
+          }
+          renderItem={({ item }) => tab === "users" ? (
+            <Pressable style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: c.card, borderWidth: 1, borderColor: c.border, borderRadius: 14, padding: 14 }, pressed && { opacity: 0.8 }]}>
+              <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: c.accentPurple + "25", alignItems: "center", justifyContent: "center" }}>
+                {item.avatar_url
+                  ? <Image source={{ uri: item.avatar_url }} style={{ width: 44, height: 44, borderRadius: 22 }} />
+                  : <Text style={{ color: c.accentPurple, fontWeight: "800", fontSize: 16 }}>{(item.full_name || item.username || "?").charAt(0).toUpperCase()}</Text>
+                }
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: c.textPrimary, fontWeight: "700", fontSize: 15 }}>{item.full_name || item.username}</Text>
+                <Text style={{ color: c.textSecondary, fontSize: 12 }}>@{item.username}{item.filiere ? ` · ${item.filiere}` : ""}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={c.textSecondary} />
+            </Pressable>
+          ) : (
+            <Pressable style={({ pressed }) => [{ backgroundColor: c.card, borderWidth: 1, borderColor: c.border, borderRadius: 14, padding: 14 }, pressed && { opacity: 0.8 }]}>
+              <Text style={{ color: c.textPrimary, fontWeight: "700" }} numberOfLines={1}>{item.title || "Sans titre"}</Text>
+              <Text style={{ color: c.textSecondary, fontSize: 13, marginTop: 4 }} numberOfLines={2}>{item.content}</Text>
+            </Pressable>
+          )}
+        />
+      </View>
+    </Modal>
+  );
+}
+
+/* ── HomeScreen principal ────────────────────────────────────────── */
 function HomeScreenComponent() {
-  const router = useRouter();
+  const router  = useRouter();
+  const insets  = useSafeAreaInsets();
+  const { c }   = useTheme();
   const { profile } = useAuthStore();
-  const {
-    posts,
-    loading,
-    refreshing,
-    loadingMore,
-    commentsByPost,
-    commentsLoading,
-    refresh,
-    loadMore,
-    toggleLike,
-    toggleSave,
-    openComments,
-    addComment,
-  } = useFeedStore();
+  const { posts, loading, refreshing, loadingMore, commentsByPost, commentsLoading, refresh, loadMore, toggleLike, toggleSave, openComments, addComment } = useFeedStore();
 
-  const [selectedCommentPost, setSelectedCommentPost] = useState<FeedPost | null>(null);
-  const [commentText, setCommentText] = useState("");
-
+  const { unreadCount: notifCount, load: loadNotifs } = useNotificationsStore();
+  const [selectedPost, setSelectedPost] = useState<FeedPost | null>(null);
+  const [commentText, setCommentText]   = useState("");
+  const [searchOpen, setSearchOpen]     = useState(false);
+  const [visibleDemoPosts, setVisibleDemoPosts] = useState<FeedPost[]>(DEMO_FEED_POSTS.slice(0, 5));
   const filiere = profile?.filiere || undefined;
 
+  useEffect(() => { refresh(filiere).catch(() => null); }, [refresh, filiere]);
+  useEffect(() => { loadNotifs(); }, [loadNotifs]);
+  // Rotation automatique des posts bots toutes les 30 secondes
   useEffect(() => {
-    refresh(filiere).catch(() => null);
-  }, [refresh, filiere]);
-
+    if (posts.length > 0) return; // Ne tourner que si pas de vraies données
+    const interval = setInterval(() => {
+      setVisibleDemoPosts(prev => {
+        const all = DEMO_FEED_POSTS;
+        const firstId = prev[0]?.id;
+        const currentIdx = all.findIndex(p => p.id === firstId);
+        const next = (currentIdx + 1) % all.length;
+        return [...all.slice(next, next + 5), ...all.slice(0, Math.max(0, 5 - (all.length - next)))];
+      });
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [posts.length]);
   useEffect(() => {
     seedInitialContentIfEmptyDev()
-      .then((result) => {
-        if (result) {
-          refresh(filiere).catch(() => null);
-        }
-      })
+      .then(r => { if (r) refresh(filiere).catch(() => null); })
       .catch(() => null);
   }, [refresh, filiere]);
 
-  const notificationCount = useMemo(() => 3, []);
-
-  const onPressTrend = useCallback((trend: TrendItem) => {
-    router.push(`/trends/${trend.id}` as Href);
-  }, [router]);
-
-  const onPressContent = useCallback((post: FeedPost) => {
-    router.push(`/content/${post.id}` as Href);
-  }, [router]);
-
-  const onPressComments = useCallback(async (post: FeedPost) => {
-    setSelectedCommentPost(post);
-    await openComments(post.id).catch((error: any) => {
-      Alert.alert("Erreur", error?.message || "Impossible de charger les commentaires");
-    });
+  const onPressTrend    = useCallback((t: TrendItem) => router.push(`/trends/${t.id}` as Href), [router]);
+  const onPressContent  = useCallback((p: FeedPost) => router.push(`/content/${p.id}` as Href), [router]);
+  const onPressComments = useCallback(async (p: FeedPost) => {
+    setSelectedPost(p);
+    await openComments(p.id).catch(() => null);
   }, [openComments]);
 
   const submitComment = useCallback(async () => {
-    if (!selectedCommentPost || !commentText.trim()) return;
-    await addComment(selectedCommentPost.id, commentText.trim()).catch((error: any) => {
-      Alert.alert("Erreur", error?.message || "Impossible d'ajouter le commentaire");
-    });
+    if (!selectedPost || !commentText.trim()) return;
+    await addComment(selectedPost.id, commentText.trim()).catch(() => null);
     setCommentText("");
-  }, [addComment, commentText, selectedCommentPost]);
+  }, [addComment, commentText, selectedPost]);
+
+  const handleShare = async (p: FeedPost) => {
+    await Share.share({
+      title:   p.title || "BLOC",
+      message: `${p.title ? p.title + "\n\n" : ""}${p.content}\n\nhttps://blocapp.fr/post/${p.id}`,
+      url:     `https://blocapp.fr/post/${p.id}`,
+    }).catch(() => null);
+  };
 
   return (
-    <View style={styles.screen}>
-      <HomeHeader
-        notificationCount={notificationCount}
-        avatarLabel={profile?.full_name || profile?.username || "B"}
-        onPressBoost={() => router.push("/create")}
-        onPressFavorites={() => Alert.alert("Favoris", "Tu pourras retrouver tes contenus favoris ici.")}
-        onPressNotifications={() => Alert.alert("Notifications", "Aucune nouvelle notification importante.")}
-        onPressTitle={() => router.push("/(tabs)/search")}
-      />
+    <View style={{ flex: 1, backgroundColor: c.background }}>
 
+      {/* ── Header ── */}
+      <View style={{
+        paddingTop: insets.top + 10, paddingHorizontal: 16, paddingBottom: 10,
+        backgroundColor: c.background, borderBottomWidth: 1, borderBottomColor: c.border,
+        flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+      }}>
+        {/* Avatar + Titre */}
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+          <Pressable onPress={() => router.push("/(tabs)/profile")}
+            style={{ width: 34, height: 34, borderRadius: 17, overflow: "hidden", backgroundColor: c.cardAlt, alignItems: "center", justifyContent: "center" }}>
+            {profile?.avatar_url
+              ? <Image source={{ uri: profile.avatar_url }} style={{ width: 34, height: 34 }} />
+              : <Text style={{ color: c.textPrimary, fontWeight: "800", fontSize: 14 }}>{(profile?.full_name || "B").charAt(0)}</Text>
+            }
+          </Pressable>
+          <Text style={{ color: c.textPrimary, fontSize: 22, fontWeight: "800", letterSpacing: -0.4 }}>Accueil</Text>
+        </View>
+
+        {/* Icônes droite : Cloche + Messagerie */}
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          {/* 🔔 Notifications */}
+          <Pressable
+            onPress={() => router.push("/notifications" as any)}
+            style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: c.cardAlt, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: c.border, position: "relative" }}
+          >
+            <Ionicons name="notifications-outline" size={18} color={c.textPrimary} />
+            {notifCount > 0 && (
+              <View style={{ position: "absolute", top: 6, right: 6, width: 8, height: 8, borderRadius: 4, backgroundColor: c.danger, borderWidth: 1.5, borderColor: c.background }} />
+            )}
+          </Pressable>
+          {/* 💬 Messagerie */}
+          <Pressable
+            onPress={() => router.push("/(tabs)/messages/index")}
+            style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: c.cardAlt, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: c.border }}
+          >
+            <Ionicons name="chatbubble-ellipses-outline" size={18} color={c.textPrimary} />
+          </Pressable>
+        </View>
+      </View>
+
+      {/* ── Feed ── */}
       <FlatList
-        data={posts}
-        keyExtractor={(item) => item.id}
-        style={styles.list}
-        contentContainerStyle={styles.contentContainer}
+        data={posts.length > 0 ? posts : (loading ? [] : visibleDemoPosts)}
+        keyExtractor={i => i.id}
+        contentContainerStyle={{ paddingBottom: 110 }}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => refresh(filiere)} tintColor="#fff" />}
-        onEndReachedThreshold={0.35}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => refresh(filiere)} tintColor={c.accentPurple} />}
+        onEndReachedThreshold={0.4}
         onEndReached={() => loadMore(filiere)}
         ListHeaderComponent={
           <View>
-            <View style={styles.sectionHeaderRow}>
-              <Text style={styles.sectionTitle}>Tendances etudes</Text>
-              <AppButton variant="secondary" onPress={() => router.push("/(tabs)/search")}>Voir tout</AppButton>
+            {/* Tendances */}
+            <View style={{ paddingHorizontal: 16, paddingTop: 14, marginBottom: 10 }}>
+              <Text style={{ color: c.textPrimary, fontSize: 17, fontWeight: "800" }}>Tendances</Text>
             </View>
-
             <FlatList
-              data={trendsMock}
-              keyExtractor={(item) => item.id}
-              horizontal
-              showsHorizontalScrollIndicator={false}
+              data={trendsMock} keyExtractor={i => i.id} horizontal showsHorizontalScrollIndicator={false}
               renderItem={({ item }) => <TrendCard item={item} onPress={onPressTrend} />}
-              contentContainerStyle={styles.trendsList}
+              contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 14 }}
             />
-
-            <View style={styles.sectionHeaderRow}>
-              <Text style={styles.sectionTitle}>Fil d'actu</Text>
-              <Text style={styles.sectionHint}>{filiere || "Pour toi"}</Text>
+            {/* Fil d'actu + recherche */}
+            <View style={{ borderTopWidth: 1, borderTopColor: c.border, paddingTop: 14, paddingHorizontal: 16, paddingBottom: 4 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                <Text style={{ color: c.textPrimary, fontSize: 17, fontWeight: "800" }}>Fil d'actu</Text>
+                <Text style={{ color: c.textSecondary, fontSize: 13 }}>{filiere || "Pour toi"}</Text>
+              </View>
+              {/* Barre recherche juste sous "Fil d'actu" */}
+              <Pressable
+                onPress={() => setSearchOpen(true)}
+                style={{ flexDirection: "row", alignItems: "center", backgroundColor: c.cardAlt, borderRadius: 14, borderWidth: 1, borderColor: c.border, paddingHorizontal: 14, height: 42, gap: 10, marginBottom: 14 }}
+              >
+                <Ionicons name="search-outline" size={16} color={c.textSecondary} />
+                <Text style={{ color: c.textSecondary, fontSize: 14, flex: 1 }}>Rechercher utilisateurs, publications…</Text>
+              </Pressable>
             </View>
           </View>
         }
-        ListEmptyComponent={loading ? (
-          <View style={styles.skeletonWrap}>
-            {[1, 2, 3].map((item) => (
-              <View key={item} style={styles.skeletonCard}>
-                <View style={styles.skeletonLineLg} />
-                <View style={styles.skeletonLineMd} />
-                <View style={styles.skeletonLineSm} />
-              </View>
-            ))}
-          </View>
-        ) : (
-          <View style={styles.emptyWrap}>
-            <Text style={styles.emptyText}>Aucun post. Cree ta premiere publication.</Text>
-            <View style={styles.emptyActions}>
-              <AppButton onPress={() => router.push("/create")}>Creer ton premier post</AppButton>
-              <AppButton variant="secondary" onPress={() => router.push("/(tabs)/messages/index")}>
-                Rejoindre un groupe
-              </AppButton>
+        ListEmptyComponent={
+          loading ? (
+            <View>
+              {[1, 2, 3].map(i => <SkeletonPost key={i} c={c} />)}
             </View>
-          </View>
-        )}
-        ListFooterComponent={loadingMore ? <ActivityIndicator color="#fff" style={{ marginVertical: 12 }} /> : null}
+          ) : (
+            <View style={{ alignItems: "center", paddingVertical: 40, gap: 12 }}>
+              <Ionicons name="newspaper-outline" size={44} color={c.textSecondary} />
+              <Text style={{ color: c.textPrimary, fontWeight: "700", fontSize: 16 }}>Fil d'actu vide</Text>
+              <Text style={{ color: c.textSecondary, textAlign: "center", fontSize: 14 }}>
+                Connecte-toi pour voir les posts de ta filière.
+              </Text>
+              <Pressable
+                onPress={() => router.push("/create/index")}
+                style={{ height: 42, borderRadius: 999, backgroundColor: c.accentPurple, paddingHorizontal: 24, alignItems: "center", justifyContent: "center" }}
+              >
+                <Text style={{ color: "#FFF", fontWeight: "800" }}>Créer une publication</Text>
+              </Pressable>
+            </View>
+          )
+        }
+        ListFooterComponent={loadingMore ? <ActivityIndicator color={c.accentPurple} style={{ marginVertical: 14 }} /> : null}
         renderItem={({ item }) => (
           <PostCard
             post={item}
-            onToggleLike={async (id) => {
-              try {
-                await toggleLike(id);
-              } catch (error: any) {
-                Alert.alert("Erreur", error?.message || "Action like indisponible");
-              }
-            }}
-            onToggleSave={async (id) => {
-              try {
-                await toggleSave(id);
-              } catch (error: any) {
-                Alert.alert("Erreur", error?.message || "Action sauvegarde indisponible");
-              }
-            }}
+            onToggleLike={async id => { try { await toggleLike(id); } catch {} }}
+            onToggleSave={async id => { try { await toggleSave(id); } catch {} }}
             onPressComments={onPressComments}
             onPressContent={onPressContent}
-            onPressFollow={(post) => {
-              const name = post.author?.username || post.author?.full_name || "cet utilisateur";
-              Alert.alert("Suivi", `Tu suis maintenant ${name}.`);
-            }}
-            onPressShare={(post) => {
-              Alert.alert("Partager", `Publication "${post.title || "Sans titre"}" partagee (demo).`);
-            }}
-            onPressMore={(post) => {
-              Alert.alert("Actions", "Selectionne une action", [
-                {
-                  text: "Signaler",
-                  onPress: async () => {
-                    try {
-                      await reportTarget({ targetType: "post", targetId: post.id, reason: "signalement utilisateur" });
-                      Alert.alert("Merci", "Signalement envoye.");
-                    } catch (error: any) {
-                      Alert.alert("Erreur", error?.message || "Impossible de signaler");
-                    }
-                  },
-                },
-                {
-                  text: "Masquer",
-                  onPress: async () => {
-                    try {
-                      await hidePost(post.id);
-                      await refresh(filiere);
-                    } catch (error: any) {
-                      Alert.alert("Erreur", error?.message || "Impossible de masquer");
-                    }
-                  },
-                },
-                {
-                  text: "Bloquer l'auteur",
-                  style: "destructive",
-                  onPress: async () => {
-                    try {
-                      if (!post.author?.id) return;
-                      await blockUser(post.author.id);
-                      await refresh(filiere);
-                    } catch (error: any) {
-                      Alert.alert("Erreur", error?.message || "Impossible de bloquer");
-                    }
-                  },
-                },
-                { text: "Annuler", style: "cancel" },
-              ]);
-            }}
+            onPressShare={handleShare}
+            onPressMore={p => Alert.alert("Actions", "", [
+              { text: "Signaler",  onPress: async () => { try { await reportTarget({ targetType: "post", targetId: p.id, reason: "signalement" }); Alert.alert("Merci", "Signalement envoyé."); } catch {} } },
+              { text: "Masquer",   onPress: async () => { try { await hidePost(p.id); await refresh(filiere); } catch {} } },
+              { text: "Bloquer",   style: "destructive", onPress: async () => { if (!p.author?.id) return; try { await blockUser(p.author.id); await refresh(filiere); } catch {} } },
+              { text: "Annuler",   style: "cancel" },
+            ])}
           />
         )}
       />
 
-      <Modal visible={!!selectedCommentPost} transparent animationType="fade" onRequestClose={() => setSelectedCommentPost(null)}>
-        <View style={styles.modalOverlay}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setSelectedCommentPost(null)} />
-          <View style={styles.commentSheet}>
-            <Text style={styles.commentTitle}>Commentaires</Text>
+      <SearchModal visible={searchOpen} onClose={() => setSearchOpen(false)} c={c} />
+
+      {/* ── Modal commentaires ── */}
+      <Modal visible={!!selectedPost} transparent animationType="slide" onRequestClose={() => setSelectedPost(null)}>
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.65)", justifyContent: "flex-end" }}>
+          <Pressable style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} onPress={() => setSelectedPost(null)} />
+          <View style={{ backgroundColor: c.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, borderWidth: 1, borderColor: c.border, padding: 20, maxHeight: "65%", minHeight: 300 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+              <Text style={{ color: c.textPrimary, fontSize: 17, fontWeight: "800" }}>Commentaires</Text>
+              <Pressable onPress={() => setSelectedPost(null)}>
+                <Ionicons name="close" size={22} color={c.textSecondary} />
+              </Pressable>
+            </View>
             <FlatList
-              data={selectedCommentPost ? commentsByPost[selectedCommentPost.id] ?? [] : []}
-              keyExtractor={(item) => item.id}
-              style={{ maxHeight: 230 }}
+              data={selectedPost ? commentsByPost[selectedPost.id] ?? [] : []}
+              keyExtractor={i => i.id}
+              style={{ maxHeight: 200 }}
               ListEmptyComponent={
-                <Text style={styles.commentTextMuted}>
-                  {commentsLoading ? "Chargement..." : "Aucun commentaire"}
+                <Text style={{ color: c.textSecondary, textAlign: "center", paddingVertical: 20 }}>
+                  {commentsLoading ? "Chargement…" : "Aucun commentaire — sois le premier !"}
                 </Text>
               }
               renderItem={({ item }) => (
-                <View style={styles.commentItem}>
-                  <Text style={styles.commentAuthor}>{item.author?.username || "user"}</Text>
-                  <Text style={styles.commentBody}>{item.content}</Text>
+                <View style={{ paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: c.border }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                    <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: c.cardAlt, alignItems: "center", justifyContent: "center" }}>
+                      <Text style={{ color: c.textPrimary, fontSize: 11, fontWeight: "800" }}>{(item.author?.username || "?").charAt(0).toUpperCase()}</Text>
+                    </View>
+                    <Text style={{ color: c.textPrimary, fontWeight: "700", fontSize: 13 }}>@{item.author?.username || "utilisateur"}</Text>
+                  </View>
+                  <Text style={{ color: c.textPrimary, marginTop: 5, marginLeft: 36, lineHeight: 19 }}>{item.content}</Text>
                 </View>
               )}
             />
-
-            <View style={styles.commentInputRow}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginTop: 14 }}>
               <TextInput
-                value={commentText}
-                onChangeText={setCommentText}
-                placeholder="Ajouter un commentaire"
-                placeholderTextColor="#8D8D95"
-                style={styles.commentInput}
+                value={commentText} onChangeText={setCommentText}
+                placeholder="Ajouter un commentaire…" placeholderTextColor={c.textSecondary}
+                style={{ flex: 1, backgroundColor: c.cardAlt, borderWidth: 1, borderColor: c.border, color: c.textPrimary, borderRadius: 22, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14 }}
+                multiline
               />
-              <AppButton style={styles.commentSend} onPress={submitComment}>
-                Envoyer
-              </AppButton>
+              <Pressable
+                onPress={submitComment}
+                style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: c.accentPurple, alignItems: "center", justifyContent: "center" }}
+              >
+                <Ionicons name="send" size={17} color="#FFF" />
+              </Pressable>
             </View>
           </View>
         </View>
@@ -260,88 +381,5 @@ function HomeScreenComponent() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  list: { flex: 1 },
-  contentContainer: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 120 },
-  sectionHeaderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 10,
-  },
-  sectionTitle: { color: colors.text, fontSize: 20, fontWeight: "700" },
-  sectionAction: { color: colors.accentAlt, fontWeight: "600", fontSize: 13 },
-  trendsList: { paddingBottom: 18 },
-  sectionHint: { color: colors.textMuted, fontSize: 13 },
-  emptyWrap: { alignItems: "center", paddingVertical: 20, gap: 10 },
-  emptyText: { color: colors.textMuted },
-  emptyActions: { width: "100%", gap: 8, paddingHorizontal: 24 },
-  emptyCta: {
-    height: 36,
-    borderRadius: 12,
-    backgroundColor: colors.accent,
-    paddingHorizontal: 14,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  emptyCtaText: { color: "#fff", fontWeight: "700" },
-  skeletonWrap: { gap: 10, paddingVertical: 8 },
-  skeletonCard: {
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
-    backgroundColor: "#101010",
-    padding: 14,
-    gap: 8,
-  },
-  skeletonLineLg: { height: 18, borderRadius: 9, backgroundColor: "#1E1E1E", width: "70%" },
-  skeletonLineMd: { height: 12, borderRadius: 6, backgroundColor: "#1C1C1C", width: "92%" },
-  skeletonLineSm: { height: 12, borderRadius: 6, backgroundColor: "#1A1A1A", width: "60%" },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "flex-end",
-  },
-  commentSheet: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    backgroundColor: "#0B0B0B",
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 18,
-    gap: 10,
-  },
-  commentTitle: { color: colors.text, fontSize: 18, fontWeight: "700" },
-  commentItem: {
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(255,255,255,0.06)",
-  },
-  commentAuthor: { color: colors.text, fontWeight: "700", fontSize: 12 },
-  commentBody: { color: "#DFDFE8", marginTop: 3 },
-  commentTextMuted: { color: colors.textMuted },
-  commentInputRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  commentInput: {
-    flex: 1,
-    backgroundColor: "#141414",
-    borderWidth: 1,
-    borderColor: colors.border,
-    color: colors.text,
-    minHeight: 40,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-  },
-  commentSend: {
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: colors.accent,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 12,
-  },
-  commentSendText: { color: colors.text, fontWeight: "700" },
-});
 
 export const HomeScreen = memo(HomeScreenComponent);

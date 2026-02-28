@@ -1,3 +1,4 @@
+import { useTheme } from "../../src/core/theme/ThemeProvider";
 import React, { useState } from "react";
 import {
   View,
@@ -15,6 +16,7 @@ import { theme } from "../../src/core/ui/theme";
 import { setProfilePhoto } from "../../src/features/profile/profileStore";
 
 export default function ProfilePhotoModal() {
+  const { c } = useTheme();
   const router = useRouter();
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -36,7 +38,7 @@ export default function ProfilePhotoModal() {
     if (!hasPermission) return;
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ImagePicker.MediaType.images,
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
@@ -221,7 +223,7 @@ export default function ProfilePhotoModal() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.bg,
+    backgroundColor: "#000000",
   },
   content: {
     flex: 1,
@@ -233,23 +235,23 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    borderBottomColor: "rgba(255,255,255,0.08)",
   },
   closeButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: "#111111",
     alignItems: "center",
     justifyContent: "center",
   },
   closeButtonText: {
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 20,
     fontWeight: "600",
   },
   headerTitle: {
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 20,
     fontWeight: "800",
   },
@@ -272,18 +274,18 @@ const styles = StyleSheet.create({
   placeholderAvatar: {
     width: "100%",
     height: "100%",
-    backgroundColor: theme.colors.surface,
+    backgroundColor: "#111111",
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 3,
-    borderColor: theme.colors.border,
+    borderColor: "rgba(255,255,255,0.10)",
     borderStyle: "dashed",
   },
   placeholderText: {
     fontSize: 80,
   },
   previewLabel: {
-    color: theme.colors.textMuted,
+    color: "rgba(255,255,255,0.50)",
     fontSize: 14,
     fontWeight: "600",
   },
@@ -307,24 +309,24 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   primaryButton: {
-    backgroundColor: theme.colors.surface,
+    backgroundColor: "#111111",
   },
   saveButton: {
     backgroundColor: "#34c759",
   },
   dangerButton: {
-    backgroundColor: theme.colors.surface,
+    backgroundColor: "#111111",
   },
   actionIcon: {
     fontSize: 24,
   },
   actionButtonText: {
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 17,
     fontWeight: "700",
   },
   saveButtonText: {
-    color: "#ffffff",
+    color: "#FFFFFF",
     fontSize: 17,
     fontWeight: "700",
   },
@@ -339,7 +341,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   infoText: {
-    color: theme.colors.textMuted,
+    color: "rgba(255,255,255,0.50)",
     fontSize: 13,
     fontWeight: "500",
     lineHeight: 18,

@@ -1,16 +1,21 @@
-import { Alert, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
+import { Alert, Pressable, ScrollView, Switch, Text, View } from "react-native";
 import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import { SettingsRow } from "../src/features/profile/components/SettingsRow";
 import { useAuthStore } from "../state/useAuthStore";
+import { useTheme } from "../src/core/theme/ThemeProvider";
 import { seedInitialContent, seedPosts } from "../lib/dev/seed";
 import { AppButton } from "../src/core/ui/AppButton";
 import { optimizeLocalStorage } from "../src/core/storage/optimizer";
 
 export default function SettingsRoute() {
-  const router = useRouter();
+  const router  = useRouter();
+  const insets  = useSafeAreaInsets();
+  const { c, isDark, toggleTheme } = useTheme();
   const { signOut, profile, updateProfile } = useAuthStore();
 
-  const pushEnabled = (profile?.push_enabled ?? profile?.notification_enabled) ?? true;
+  const pushEnabled      = (profile?.push_enabled ?? profile?.notification_enabled) ?? true;
   const analyticsEnabled = profile?.analytics_enabled ?? true;
 
   const handleSignOut = async () => {
@@ -18,152 +23,92 @@ export default function SettingsRoute() {
     router.replace("/(auth)/login");
   };
 
-  const handleSeed = async () => {
-    try {
-      const count = await seedPosts(10);
-      Alert.alert("Seed OK", `${count} posts de test inseres.`);
-    } catch (error: any) {
-      Alert.alert("Seed erreur", error?.message || "Impossible de seed");
-    }
-  };
-
-  const handleSeedInitial = async () => {
-    try {
-      const result = await seedInitialContent();
-      Alert.alert("Seed V1", `${result.posts} posts, ${result.groups} groupes, ${result.profiles} profils demos.`);
-    } catch (error: any) {
-      Alert.alert("Seed erreur", error?.message || "Impossible de seed");
-    }
-  };
-
-  const handleOptimizeStorage = async () => {
-    try {
-      const result = await optimizeLocalStorage({ force: true });
-      if (result.skipped) {
-        Alert.alert("Stockage", "Optimisation deja recente.");
-        return;
-      }
-      Alert.alert(
-        "Stockage optimise",
-        `Commentaires nettoyes: ${result.deletedOldComments}\nMeta nettoyees: ${result.deletedOrphanMeta}`
-      );
-    } catch (error: any) {
-      Alert.alert("Erreur", error?.message || "Impossible d'optimiser le stockage");
-    }
-  };
+  const toggleRow = (label: string, sub: string, value: boolean, onChange: (v: boolean) => void) => (
+    <View style={{ minHeight: 64, borderRadius: 14, backgroundColor: c.card, borderWidth: 1, borderColor: c.border, paddingHorizontal: 14, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+      <View style={{ flex: 1, marginRight: 12 }}>
+        <Text style={{ color: c.textPrimary, fontWeight: "700", fontSize: 15 }}>{label}</Text>
+        <Text style={{ color: c.textSecondary, fontSize: 12, marginTop: 3 }}>{sub}</Text>
+      </View>
+      <Switch
+        value={value}
+        onValueChange={onChange}
+        trackColor={{ false: isDark ? "#3A3A40" : "#D1D1D6", true: "#6E5CFF" }}
+        thumbColor="#fff"
+      />
+    </View>
+  );
 
   return (
-    <View style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Text style={styles.title}>Parametres</Text>
+    <View style={{ flex: 1, backgroundColor: c.background }}>
+      <ScrollView contentContainerStyle={{ paddingTop: insets.top + 16, paddingHorizontal: 16, paddingBottom: 40, gap: 14 }} showsVerticalScrollIndicator={false}>
 
-        <View style={styles.group}>
-          <SettingsRow icon="person-circle-outline" title="Compte" subtitle="Profil, email, mot de passe" />
-          <View style={styles.toggleRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.toggleTitle}>Notifications</Text>
-              <Text style={styles.toggleSubtitle}>Push messages et activite groupe</Text>
+        <Text style={{ color: c.textPrimary, fontSize: 30, fontWeight: "800", marginBottom: 4 }}>Paramètres</Text>
+
+        {/* ── Thème ── */}
+        <Pressable
+          onPress={toggleTheme}
+          style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: c.card, borderWidth: 1, borderColor: c.border, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 14 }, pressed && { opacity: 0.85 }]}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+            <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: c.cardAlt, alignItems: "center", justifyContent: "center" }}>
+              <Ionicons name={isDark ? "moon" : "sunny"} size={18} color={isDark ? "#A78BFA" : "#F59E0B"} />
             </View>
-            <Switch
-              value={pushEnabled}
-              onValueChange={async (value) => {
-                try {
-                  await updateProfile({ push_enabled: value, notification_enabled: value });
-                } catch (error: any) {
-                  Alert.alert("Erreur", error?.message || "Impossible de mettre a jour");
-                }
-              }}
-              trackColor={{ false: "#3A3A40", true: "#6E5CFF" }}
-              thumbColor="#fff"
-            />
-          </View>
-          <View style={styles.toggleRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.toggleTitle}>Analytics</Text>
-              <Text style={styles.toggleSubtitle}>Autoriser la collecte d'evenements produit</Text>
+            <View>
+              <Text style={{ color: c.textPrimary, fontSize: 15, fontWeight: "700" }}>Thème</Text>
+              <Text style={{ color: c.textSecondary, fontSize: 12, marginTop: 1 }}>{isDark ? "Mode sombre activé" : "Mode clair activé"}</Text>
             </View>
-            <Switch
-              value={analyticsEnabled}
-              onValueChange={async (value) => {
-                try {
-                  await updateProfile({ analytics_enabled: value });
-                } catch (error: any) {
-                  Alert.alert("Erreur", error?.message || "Impossible de mettre a jour");
-                }
-              }}
-              trackColor={{ false: "#3A3A40", true: "#6E5CFF" }}
-              thumbColor="#fff"
-            />
           </View>
-          <SettingsRow icon="eye-outline" title="Confidentialite" subtitle="Visibilite et donnees" />
-          <SettingsRow icon="shield-checkmark-outline" title="Securite" subtitle="Sessions et verification" />
-          <SettingsRow icon="language-outline" title="Langue" subtitle="Francais" />
-          <SettingsRow icon="color-palette-outline" title="Apparence" subtitle="Theme sombre" />
-          <SettingsRow icon="help-circle-outline" title="Aide" subtitle="Support et FAQ" />
-          <SettingsRow icon="document-text-outline" title="Conditions" subtitle="CGU et politique" />
+          {/* Switch visuel */}
+          <View style={{ width: 48, height: 28, borderRadius: 14, backgroundColor: isDark ? "#5B4CFF" : "#E5E7EB", justifyContent: "center", paddingHorizontal: 3 }}>
+            <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: c.background, alignSelf: isDark ? "flex-end" : "flex-start" }} />
+          </View>
+        </Pressable>
+
+        {/* ── Compte & préférences ── */}
+        <View style={{ gap: 10 }}>
+          <SettingsRow icon="person-circle-outline"    title="Compte"          subtitle="Profil, email, mot de passe" />
+          {toggleRow("Notifications", "Push messages et activité groupe", pushEnabled, async (v) => {
+            try { await updateProfile({ push_enabled: v, notification_enabled: v }); }
+            catch (e: any) { Alert.alert("Erreur", e?.message); }
+          })}
+          {toggleRow("Analytics", "Autoriser la collecte d'événements produit", analyticsEnabled, async (v) => {
+            try { await updateProfile({ analytics_enabled: v }); }
+            catch (e: any) { Alert.alert("Erreur", e?.message); }
+          })}
+          <SettingsRow icon="eye-outline"              title="Confidentialité"  subtitle="Visibilité et données" />
+          <SettingsRow icon="shield-checkmark-outline" title="Sécurité"         subtitle="Sessions et vérification" />
+          <SettingsRow icon="language-outline"         title="Langue"           subtitle="Français" />
+          <SettingsRow icon="help-circle-outline"      title="Aide"             subtitle="Support et FAQ" />
+          <SettingsRow icon="document-text-outline"    title="Conditions"       subtitle="CGU et politique de confidentialité" />
         </View>
 
-        <View style={{ gap: 8 }}>
-          <AppButton variant="secondary" style={styles.seedButton} onPress={handleOptimizeStorage}>
-            Optimiser stockage local
-          </AppButton>
-        </View>
+        {/* ── Outils ── */}
+        <AppButton variant="secondary" onPress={async () => {
+          try {
+            const result = await optimizeLocalStorage({ force: true });
+            if (result.skipped) { Alert.alert("Stockage", "Optimisation déjà récente."); return; }
+            Alert.alert("Stockage optimisé", `Commentaires nettoyés: ${result.deletedOldComments}\nMeta nettoyées: ${result.deletedOrphanMeta}`);
+          } catch (e: any) { Alert.alert("Erreur", e?.message); }
+        }}>
+          Optimiser stockage local
+        </AppButton>
 
-        {__DEV__ ? (
+        {__DEV__ && (
           <View style={{ gap: 8 }}>
-            <AppButton variant="secondary" style={styles.seedButton} onPress={handleSeed}>
-              Seed posts (DEV)
-            </AppButton>
-            <AppButton variant="secondary" style={styles.seedButton} onPress={handleSeedInitial}>
-              Generer contenu test
-            </AppButton>
-            <AppButton variant="secondary" style={styles.seedButton} onPress={() => router.push("/debug-tools") }>
-              Debug tools
-            </AppButton>
+            <AppButton variant="secondary" onPress={async () => {
+              try { const n = await seedPosts(10); Alert.alert("Seed OK", `${n} posts insérés.`); }
+              catch (e: any) { Alert.alert("Erreur", e?.message); }
+            }}>Seed posts (DEV)</AppButton>
+            <AppButton variant="secondary" onPress={async () => {
+              try { const r = await seedInitialContent(); Alert.alert("Seed V1", `${r.posts} posts, ${r.groups} groupes.`); }
+              catch (e: any) { Alert.alert("Erreur", e?.message); }
+            }}>Générer contenu test</AppButton>
+            <AppButton variant="secondary" onPress={() => router.push("/debug-tools")}>Debug tools</AppButton>
           </View>
-        ) : null}
+        )}
 
-        <View style={styles.logoutWrap}>
-          <SettingsRow
-            icon="log-out-outline"
-            title="Deconnexion"
-            subtitle="Quitter la session"
-            tone="danger"
-            onPress={handleSignOut}
-          />
-        </View>
+        <SettingsRow icon="log-out-outline" title="Déconnexion" subtitle="Quitter la session" tone="danger" onPress={handleSignOut} />
       </ScrollView>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#000000" },
-  content: { paddingTop: 56, paddingHorizontal: 14, paddingBottom: 30, gap: 14 },
-  title: { color: "#FFFFFF", fontSize: 30, fontWeight: "800" },
-  group: { gap: 10 },
-  toggleRow: {
-    minHeight: 64,
-    borderRadius: 14,
-    backgroundColor: "#111111",
-    borderWidth: 1,
-    borderColor: "#202028",
-    paddingHorizontal: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  toggleTitle: { color: "#fff", fontWeight: "700", fontSize: 15 },
-  toggleSubtitle: { color: "#8B8B95", fontSize: 12, marginTop: 3 },
-  seedButton: {
-    height: 42,
-    borderRadius: 12,
-    backgroundColor: "#1A1A1F",
-    borderWidth: 1,
-    borderColor: "#32323A",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  seedButtonText: { color: "#FFFFFF", fontWeight: "700" },
-  logoutWrap: { marginTop: 6 },
-});

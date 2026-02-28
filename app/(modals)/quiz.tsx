@@ -1,3 +1,4 @@
+import { useTheme } from "../../src/core/theme/ThemeProvider";
 import React, { useState } from "react";
 import {
   View,
@@ -216,7 +217,7 @@ export default function QuizModal() {
             pressed && styles.navButtonPressed,
           ]}
         >
-          <Text style={[styles.navButtonText, { color: "#ffffff" }]}>
+          <Text style={[styles.navButtonText, { color: c.textPrimary }]}>
             {currentIndex === mockQuiz.length - 1 ? "Terminer" : "Suivant →"}
           </Text>
         </Pressable>
@@ -228,7 +229,7 @@ export default function QuizModal() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.bg,
+    backgroundColor: "#000000",
   },
   header: {
     flexDirection: "row",
@@ -241,12 +242,12 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: "#111111",
     alignItems: "center",
     justifyContent: "center",
   },
   closeButtonText: {
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 20,
     fontWeight: "600",
   },
@@ -254,12 +255,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   headerTitle: {
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 20,
     fontWeight: "800",
   },
   headerSubtitle: {
-    color: theme.colors.textMuted,
+    color: "rgba(255,255,255,0.50)",
     fontSize: 14,
     fontWeight: "600",
     marginTop: 2,
@@ -273,13 +274,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   scoreText: {
-    color: "#ffffff",
+    color: "#FFFFFF",
     fontSize: 18,
     fontWeight: "800",
   },
   progressBarContainer: {
     height: 4,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: "#111111",
     marginHorizontal: 20,
     borderRadius: 2,
     overflow: "hidden",
@@ -298,13 +299,13 @@ const styles = StyleSheet.create({
     gap: 24,
   },
   questionContainer: {
-    backgroundColor: theme.colors.surface,
+    backgroundColor: "#111111",
     borderRadius: theme.radius.xl,
     padding: 24,
     ...theme.shadow.md,
   },
   questionText: {
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 22,
     fontWeight: "700",
     lineHeight: 30,
@@ -316,7 +317,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 16,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: "#111111",
     borderRadius: theme.radius.lg,
     padding: 16,
     borderWidth: 2,
@@ -341,18 +342,18 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: theme.colors.bg,
+    backgroundColor: "#000000",
     alignItems: "center",
     justifyContent: "center",
   },
   optionNumberText: {
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 14,
     fontWeight: "800",
   },
   optionText: {
     flex: 1,
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "600",
     lineHeight: 22,
@@ -384,12 +385,12 @@ const styles = StyleSheet.create({
     fontSize: 24,
   },
   explanationTitle: {
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 18,
     fontWeight: "800",
   },
   explanationText: {
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 15,
     lineHeight: 22,
     fontWeight: "500",
@@ -400,7 +401,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
+    borderTopColor: "rgba(255,255,255,0.08)",
   },
   navButton: {
     flex: 1,
@@ -416,13 +417,13 @@ const styles = StyleSheet.create({
     backgroundColor: "#007aff",
   },
   navButtonSecondary: {
-    backgroundColor: theme.colors.surface,
+    backgroundColor: "#111111",
   },
   navButtonDisabled: {
     opacity: 0.4,
   },
   navButtonText: {
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "700",
   },

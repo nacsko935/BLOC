@@ -16,6 +16,8 @@ import { useMessagesStore } from "../../../state/useMessagesStore";
 import { useAuthStore } from "../../../state/useAuthStore";
 import { AppButton } from "../../../src/core/ui/AppButton";
 import * as Haptics from "expo-haptics";
+import { useTheme } from "../../../src/core/theme/ThemeProvider";
+
 
 function getStringParam(value: string | string[] | undefined): string {
   if (Array.isArray(value)) return value[0] ?? "";
@@ -23,6 +25,7 @@ function getStringParam(value: string | string[] | undefined): string {
 }
 
 export default function GroupChatScreen() {
+  const { c } = useTheme();
   const router = useRouter();
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const groupId = getStringParam(params.id);
@@ -31,7 +34,7 @@ export default function GroupChatScreen() {
   const listRef = useRef<FlatList<any>>(null);
 
   const { user } = useAuthStore();
-  const { groups, messagesByConversation, openConversation, sendMessage, subscribeConversation, markRead, loadingMessages, leaveGroup } = useMessagesStore();
+  const { groups, messagesByConversation, openGroup, sendGroupMessage, subscribeGroup, markRead, loadingMessages, leaveGroup } = useMessagesStore();
 
   const messages = messagesByConversation[groupId] || [];
   const groupMeta = useMemo(() => groups.find((group) => group.groupId === groupId), [groups, groupId]);
@@ -40,11 +43,11 @@ export default function GroupChatScreen() {
 
   useEffect(() => {
     if (!groupId) return;
-    openConversation(groupId).catch(() => null);
+    openGroup(groupId).catch(() => null);
     markRead(groupId).catch(() => null);
-    const unsubscribe = subscribeConversation(groupId);
+    const unsubscribe = subscribeGroup(groupId);
     return unsubscribe;
-  }, [groupId, openConversation, subscribeConversation, markRead]);
+  }, [groupId, openGroup, subscribeGroup, markRead]);
 
   useEffect(() => {
     const timer = setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 40);
@@ -56,7 +59,7 @@ export default function GroupChatScreen() {
     if (!text || !groupId || sending) return;
     try {
       setSending(true);
-      await sendMessage(groupId, text);
+      await sendGroupMessage(groupId, text);
       Haptics.selectionAsync().catch(() => null);
       setInput("");
     } catch (error: any) {
@@ -118,7 +121,7 @@ export default function GroupChatScreen() {
             value={input}
             onChangeText={setInput}
             placeholder="Ecris dans le groupe..."
-            placeholderTextColor="#6E6E77"
+            placeholderTextColor={c.textSecondary}
             style={styles.input}
             multiline
           />
@@ -152,7 +155,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   headerCenter: { flex: 1, alignItems: "center" },
-  headerTitle: { color: "#F5F5F5", fontSize: 18, fontWeight: "700" },
+  headerTitle: { color: "#FFFFFF", fontSize: 18, fontWeight: "700" },
   headerSubtitle: { color: "#8F8F99", fontSize: 12, marginTop: 2 },
   messagesContent: { paddingHorizontal: 12, paddingVertical: 14, gap: 8, paddingBottom: 22 },
   empty: { color: "#8F8F99", textAlign: "center", marginTop: 20 },
@@ -175,7 +178,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    color: "#F5F5F5",
+    color: "#FFFFFF",
     maxHeight: 110,
   },
   sendButton: {

@@ -1,3 +1,4 @@
+import { useTheme } from "../../../core/theme/ThemeProvider";
 import React, { memo, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
@@ -62,6 +63,7 @@ const MessageRow = memo(function MessageRow({ item, isGroup }: MessageRowProps) 
 });
 
 export default function ConversationScreen() {
+  const { c } = useTheme();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { updateLastMessage } = useConversations();
@@ -193,7 +195,7 @@ export default function ConversationScreen() {
             value={newMessage}
             onChangeText={setNewMessage}
             placeholder="Message..."
-            placeholderTextColor={theme.colors.textMuted}
+            placeholderTextColor={"rgba(255,255,255,0.45)"}
             style={styles.input}
             multiline
             maxLength={500}
@@ -212,15 +214,15 @@ export default function ConversationScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: theme.colors.bg },
+  container: { flex: 1, backgroundColor: "#000000" },
   header: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 12,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-    backgroundColor: theme.colors.surface,
+    borderBottomColor: "rgba(255,255,255,0.08)",
+    backgroundColor: "#111111",
   },
   circleButton: {
     width: 36,
@@ -231,7 +233,7 @@ const styles = StyleSheet.create({
   },
   buttonPressed: { opacity: 0.7 },
   headerName: { fontSize: 16, fontWeight: "800" },
-  headerSubtitle: { color: theme.colors.textMuted, fontSize: 12 },
+  headerSubtitle: { color: "rgba(255,255,255,0.50)", fontSize: 12 },
   messagesList: { paddingHorizontal: 14, paddingVertical: 14, flexGrow: 1 },
   messageContainer: { flexDirection: "row", marginBottom: 12, alignItems: "flex-end" },
   messageContainerMe: { justifyContent: "flex-end" },
@@ -240,30 +242,30 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: theme.colors.surfaceElevated,
+    backgroundColor: "#111111",
     marginRight: 8,
     alignItems: "center",
     justifyContent: "center",
   },
   messageAvatarText: { fontSize: 13, fontWeight: "800" },
   messageBubble: { maxWidth: "76%", borderRadius: 20, paddingHorizontal: 14, paddingVertical: 10 },
-  messageBubbleMe: { backgroundColor: theme.colors.accent, borderBottomRightRadius: 6 },
-  messageBubbleOther: { backgroundColor: theme.colors.surface, borderBottomLeftRadius: 6 },
-  messageSender: { color: theme.colors.textMuted, fontSize: 11, marginBottom: 4 },
+  messageBubbleMe: { backgroundColor: "#6E5CFF", borderBottomRightRadius: 6 },
+  messageBubbleOther: { backgroundColor: "#111111", borderBottomLeftRadius: 6 },
+  messageSender: { color: "rgba(255,255,255,0.50)", fontSize: 11, marginBottom: 4 },
   messageText: { fontSize: 15, lineHeight: 20 },
   messageTextMe: { color: "#fff" },
-  messageTextOther: { color: theme.colors.text },
+  messageTextOther: { color: "#FFFFFF" },
   messageTime: { fontSize: 11 },
   messageTimeMe: { color: "rgba(255,255,255,0.75)" },
-  messageTimeOther: { color: theme.colors.textMuted },
+  messageTimeOther: { color: "rgba(255,255,255,0.50)" },
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
-    backgroundColor: theme.colors.surface,
+    borderTopColor: "rgba(255,255,255,0.08)",
+    backgroundColor: "#111111",
     gap: 8,
   },
   attachButton: {
@@ -272,15 +274,15 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: theme.colors.surfaceElevated,
+    backgroundColor: "#111111",
   },
   input: {
     flex: 1,
     borderRadius: 20,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    backgroundColor: theme.colors.surfaceElevated,
-    color: theme.colors.text,
+    backgroundColor: "#111111",
+    color: "#FFFFFF",
     maxHeight: 100,
   },
   sendButton: {
@@ -289,7 +291,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: theme.colors.accent,
+    backgroundColor: "#6E5CFF",
   },
   sendButtonDisabled: {
     opacity: 0.35,

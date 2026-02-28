@@ -1,3 +1,4 @@
+import { useTheme } from "../theme/ThemeProvider";
 import { Animated, View } from "react-native";
 import { useEffect, useRef } from "react";
 import { theme } from "./theme";
@@ -21,7 +22,7 @@ export function Skeleton({ height = 16, width = "100%" }: { height?: number; wid
           height,
           width,
           borderRadius: theme.radius.md,
-          backgroundColor: theme.colors.surfaceElevated,
+          backgroundColor: "#1c1c23",
         }}
       />
     </Animated.View>

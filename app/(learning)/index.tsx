@@ -324,7 +324,7 @@ const styles = StyleSheet.create({
   toolsGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", marginTop: 12 },
   whiteCtaWrap: { gap: 8, paddingHorizontal: 2 },
   whiteCta: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#111111",
     borderRadius: 18,
     paddingVertical: 16,
     alignItems: "center",

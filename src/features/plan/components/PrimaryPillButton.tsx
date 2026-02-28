@@ -11,7 +11,7 @@ export function PrimaryPillButton({ label, onPress }: { label: string; onPress: 
 const styles = StyleSheet.create({
   btn: {
     borderRadius: 999,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#111111",
     borderWidth: 1,
     borderColor: "#FFFFFF",
     paddingHorizontal: 13,

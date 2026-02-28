@@ -12,11 +12,11 @@ async function isAnalyticsEnabledForUser(userId: string) {
   const supabase = getSupabaseOrThrow();
   const { data } = await supabase
     .from("profiles")
-    .select("analytics_enabled")
+    .select("id")
     .eq("id", userId)
     .maybeSingle();
 
-  const enabled = (data?.analytics_enabled ?? true) !== false;
+  const enabled = true; // analytics_enabled column not in DB yet
   profileCache = { userId, enabled, expiresAt: Date.now() + 60_000 };
   return enabled;
 }

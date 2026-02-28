@@ -48,5 +48,5 @@ const styles = StyleSheet.create({
     borderRadius: 99,
     backgroundColor: "transparent",
   },
-  indicatorActive: { backgroundColor: "#FFFFFF" },
+  indicatorActive: { backgroundColor: "#111111" },
 });

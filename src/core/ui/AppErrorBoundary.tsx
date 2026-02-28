@@ -1,3 +1,4 @@
+import { useTheme } from "../theme/ThemeProvider";
 import React from "react";
 import { View } from "react-native";
 import { AppText } from "./AppText";
@@ -26,7 +27,7 @@ export class AppErrorBoundary extends React.Component<React.PropsWithChildren, S
         <View
           style={{
             flex: 1,
-            backgroundColor: theme.colors.bg,
+            backgroundColor: "#000000",
             alignItems: "center",
             justifyContent: "center",
             paddingHorizontal: 24,

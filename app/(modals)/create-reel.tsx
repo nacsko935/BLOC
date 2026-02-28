@@ -1,3 +1,4 @@
+import { useTheme } from "../../src/core/theme/ThemeProvider";
 import React, { useState } from "react";
 import {
   View,
@@ -36,7 +37,7 @@ export default function CreateReelModal() {
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.All,
+      mediaTypes: ImagePicker.MediaType.images,
       allowsEditing: true,
       aspect: [9, 16],
       quality: 0.8,
@@ -60,7 +61,7 @@ export default function CreateReelModal() {
     }
 
     const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.All,
+      mediaTypes: ImagePicker.MediaType.images,
       allowsEditing: true,
       aspect: [9, 16],
       quality: 0.8,
@@ -212,7 +213,7 @@ export default function CreateReelModal() {
                 value={caption}
                 onChangeText={setCaption}
                 placeholder="Décrivez votre reel..."
-                placeholderTextColor={theme.colors.textMuted}
+                placeholderTextColor={"rgba(255,255,255,0.45)"}
                 style={styles.textArea}
                 multiline
                 maxLength={300}
@@ -227,7 +228,7 @@ export default function CreateReelModal() {
                 value={tags}
                 onChangeText={setTags}
                 placeholder="#maths #cours #tutoriel"
-                placeholderTextColor={theme.colors.textMuted}
+                placeholderTextColor={"rgba(255,255,255,0.45)"}
                 style={styles.input}
                 autoCapitalize="none"
               />
@@ -284,7 +285,7 @@ export default function CreateReelModal() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.bg,
+    backgroundColor: "#000000",
   },
   header: {
     flexDirection: "row",
@@ -293,23 +294,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    borderBottomColor: "rgba(255,255,255,0.08)",
   },
   closeButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: "#111111",
     alignItems: "center",
     justifyContent: "center",
   },
   closeButtonText: {
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 20,
     fontWeight: "600",
   },
   headerTitle: {
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 20,
     fontWeight: "800",
   },
@@ -317,7 +318,7 @@ const styles = StyleSheet.create({
     margin: 20,
     borderRadius: theme.radius.xl,
     overflow: "hidden",
-    backgroundColor: theme.colors.surface,
+    backgroundColor: "#111111",
     aspectRatio: 9 / 16,
     position: "relative",
   },
@@ -337,7 +338,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   removeButtonText: {
-    color: "#ffffff",
+    color: "#FFFFFF",
     fontSize: 18,
     fontWeight: "600",
   },
@@ -351,7 +352,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   mediaTypeBadgeText: {
-    color: "#ffffff",
+    color: "#FFFFFF",
     fontSize: 12,
     fontWeight: "700",
   },
@@ -359,10 +360,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 40,
     margin: 20,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: "#111111",
     borderRadius: theme.radius.xl,
     borderWidth: 2,
-    borderColor: theme.colors.border,
+    borderColor: "rgba(255,255,255,0.10)",
     borderStyle: "dashed",
   },
   uploadIcon: {
@@ -370,13 +371,13 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   uploadTitle: {
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 20,
     fontWeight: "800",
     marginBottom: 8,
   },
   uploadDescription: {
-    color: theme.colors.textMuted,
+    color: "rgba(255,255,255,0.50)",
     fontSize: 14,
     fontWeight: "500",
     marginBottom: 24,
@@ -393,7 +394,7 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 16,
     paddingHorizontal: 20,
-    backgroundColor: theme.colors.surfaceElevated,
+    backgroundColor: "#111111",
     borderRadius: theme.radius.lg,
     minWidth: 100,
   },
@@ -404,7 +405,7 @@ const styles = StyleSheet.create({
     fontSize: 32,
   },
   uploadButtonText: {
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 13,
     fontWeight: "700",
   },
@@ -416,36 +417,36 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   label: {
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 15,
     fontWeight: "700",
   },
   input: {
-    backgroundColor: theme.colors.surface,
+    backgroundColor: "#111111",
     borderRadius: theme.radius.lg,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 15,
     fontWeight: "500",
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: "rgba(255,255,255,0.10)",
   },
   textArea: {
-    backgroundColor: theme.colors.surface,
+    backgroundColor: "#111111",
     borderRadius: theme.radius.lg,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 15,
     fontWeight: "500",
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: "rgba(255,255,255,0.10)",
     minHeight: 100,
     textAlignVertical: "top",
   },
   charCount: {
-    color: theme.colors.textMuted,
+    color: "rgba(255,255,255,0.50)",
     fontSize: 12,
     fontWeight: "600",
     alignSelf: "flex-end",
@@ -457,13 +458,13 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   tagChip: {
-    backgroundColor: theme.colors.accent,
+    backgroundColor: "#6E5CFF",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 999,
   },
   tagChipText: {
-    color: "#ffffff",
+    color: "#FFFFFF",
     fontSize: 12,
     fontWeight: "700",
   },
@@ -474,13 +475,13 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   tipsTitle: {
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 14,
     fontWeight: "800",
     marginBottom: 4,
   },
   tipsText: {
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 13,
     fontWeight: "500",
     lineHeight: 18,
@@ -490,7 +491,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: theme.colors.accent,
+    backgroundColor: "#6E5CFF",
     paddingVertical: 16,
     borderRadius: theme.radius.lg,
     ...theme.shadow.md,
@@ -506,7 +507,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
   },
   publishButtonText: {
-    color: "#ffffff",
+    color: "#FFFFFF",
     fontSize: 17,
     fontWeight: "800",
   },

@@ -27,7 +27,7 @@ export function ModuleCardSmall({ module, onPress }: Props) {
 const styles = StyleSheet.create({
   card: {
     width: 180,
-    backgroundColor: "#121214",
+    backgroundColor: "#000000",
     borderRadius: 18,
     borderWidth: 1,
     borderColor: "#242527",

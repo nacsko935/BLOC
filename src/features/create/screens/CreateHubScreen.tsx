@@ -52,7 +52,7 @@ export default function CreateHubScreen() {
                 onChangeText={setTitle}
                 placeholder="Ex: Fiche SQL compacte"
                 placeholderTextColor="#8D8D96"
-                style={{ color: "white", borderBottomColor: "#2C2C35", borderBottomWidth: 1, paddingVertical: 8 }}
+                style={{ color: "white", borderBottomColor: "#222222", borderBottomWidth: 1, paddingVertical: 8 }}
               />
             </View>
 
@@ -63,7 +63,7 @@ export default function CreateHubScreen() {
                 onChangeText={setFiliere}
                 placeholder="Ex: Informatique"
                 placeholderTextColor="#8D8D96"
-                style={{ color: "white", borderBottomColor: "#2C2C35", borderBottomWidth: 1, paddingVertical: 8 }}
+                style={{ color: "white", borderBottomColor: "#222222", borderBottomWidth: 1, paddingVertical: 8 }}
               />
             </View>
 

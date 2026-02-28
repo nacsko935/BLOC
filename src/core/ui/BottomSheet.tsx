@@ -1,3 +1,4 @@
+import { useTheme } from "../theme/ThemeProvider";
 import { ReactNode } from "react";
 import { View, Pressable, Text } from "react-native";
 import { theme } from "./theme";
@@ -31,7 +32,7 @@ export default function BottomSheet({
           borderTopLeftRadius: 22,
           borderTopRightRadius: 22,
           borderWidth: 1,
-          borderColor: theme.colors.border,
+          borderColor: "rgba(255,255,255,0.08)",
           gap: 12,
         }}
       >
@@ -46,7 +47,7 @@ export default function BottomSheet({
             }}
           />
         </View>
-        <Text style={{ color: theme.colors.text, fontSize: 20, fontWeight: "900" }}>{title}</Text>
+        <Text style={{ color: "#ffffff", fontSize: 20, fontWeight: "900" }}>{title}</Text>
         {children}
       </View>
     </View>

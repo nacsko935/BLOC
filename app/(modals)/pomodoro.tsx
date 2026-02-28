@@ -1,3 +1,4 @@
+import { useTheme } from "../../src/core/theme/ThemeProvider";
 import React, { useState, useEffect, useRef } from "react";
 import {
   View,
@@ -272,7 +273,7 @@ export default function PomodoroModal() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.bg,
+    backgroundColor: "#000000",
   },
   header: {
     flexDirection: "row",
@@ -285,17 +286,17 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: "#111111",
     alignItems: "center",
     justifyContent: "center",
   },
   closeButtonText: {
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 20,
     fontWeight: "600",
   },
   headerTitle: {
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 20,
     fontWeight: "800",
   },
@@ -309,16 +310,16 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 12,
     borderRadius: theme.radius.lg,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: "#111111",
     alignItems: "center",
   },
   modeButtonText: {
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 14,
     fontWeight: "700",
   },
   modeButtonTextActive: {
-    color: "#ffffff",
+    color: "#FFFFFF",
   },
   timerContainer: {
     flex: 1,
@@ -333,7 +334,7 @@ const styles = StyleSheet.create({
     borderWidth: 8,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: theme.colors.surface,
+    backgroundColor: "#111111",
   },
   timerText: {
     fontSize: 64,
@@ -341,7 +342,7 @@ const styles = StyleSheet.create({
     letterSpacing: -2,
   },
   timerLabel: {
-    color: theme.colors.textMuted,
+    color: "rgba(255,255,255,0.50)",
     fontSize: 16,
     fontWeight: "600",
     marginTop: 8,
@@ -376,21 +377,21 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.98 }],
   },
   mainButtonText: {
-    color: "#ffffff",
+    color: "#FFFFFF",
     fontSize: 18,
     fontWeight: "800",
   },
   secondaryButton: {
     paddingVertical: 14,
     borderRadius: theme.radius.lg,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: "#111111",
     alignItems: "center",
   },
   secondaryButtonPressed: {
     opacity: 0.8,
   },
   secondaryButtonText: {
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "700",
   },
@@ -415,12 +416,12 @@ const styles = StyleSheet.create({
     fontSize: 24,
   },
   statValue: {
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 24,
     fontWeight: "800",
   },
   statLabel: {
-    color: theme.colors.textMuted,
+    color: "rgba(255,255,255,0.50)",
     fontSize: 12,
     fontWeight: "600",
   },
@@ -429,7 +430,7 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
   infoText: {
-    color: theme.colors.textMuted,
+    color: "rgba(255,255,255,0.50)",
     fontSize: 13,
     fontWeight: "500",
     textAlign: "center",

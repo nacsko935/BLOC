@@ -1,410 +1,170 @@
 import { useState } from "react";
-import { View, Text, TextInput, Pressable, ScrollView, StyleSheet, Alert } from "react-native";
+import { Alert, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { theme } from "../../src/core/ui/theme";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTheme } from "../../src/core/theme/ThemeProvider";
 import { createCourse } from "../../src/features/courses/coursesRepo";
 
-const SEMESTERS = ['S1', 'S2'];
-const ICONS = ['📚', '💻', '🌐', '🗄️', '🧮', '🌍', '🤖', '🎨', '📊', '🔬', '⚡', '🎯'];
-const COLORS = [
-  '#3d8fff', '#f5a623', '#b164ff', '#34c759', 
-  '#ff3b30', '#ff2d55', '#5856d6', '#00c7be',
-  '#ffcc00', '#ff9500', '#af52de', '#32ade6'
+const SEMESTERS = ["S1", "S2"] as const;
+const ICONS     = ["📚","💻","🌐","🗄️","🧮","🌍","🤖","🎨","📊","🔬","⚡","🎯"];
+const COLORS    = [
+  "#3D8FFF","#F5A623","#B164FF","#34C759",
+  "#FF3B30","#FF2D55","#5856D6","#00C7BE",
+  "#FFCC00","#FF9500","#AF52DE","#32ADE6",
 ];
 
 export default function CourseNewModal() {
-  const router = useRouter();
-  const [courseName, setCourseName] = useState('');
-  const [professorName, setProfessorName] = useState('');
-  const [professorHandle, setProfessorHandle] = useState('');
-  const [selectedSemester, setSelectedSemester] = useState<'S1' | 'S2'>('S1');
-  const [selectedIcon, setSelectedIcon] = useState(ICONS[0]);
-  const [selectedColor, setSelectedColor] = useState(COLORS[0]);
+  const router  = useRouter();
+  const insets  = useSafeAreaInsets();
+  const { c }   = useTheme();
+
+  const [name,      setName]      = useState("");
+  const [profName,  setProfName]  = useState("");
+  const [profHandle,setProfHandle]= useState("");
+  const [semester,  setSemester]  = useState<"S1"|"S2">("S1");
+  const [icon,      setIcon]      = useState(ICONS[0]);
+  const [color,     setColor]     = useState(COLORS[0]);
+
+  const canSave = name.trim() && profName.trim() && profHandle.trim();
 
   const handleSave = async () => {
     try {
-      await createCourse({
-        name: courseName,
-        semester: selectedSemester,
-        professorName,
-        professorHandle,
-        color: selectedColor,
-        icon: selectedIcon,
-      });
+      await createCourse({ name, semester, professorName: profName, professorHandle: profHandle, color, icon });
       router.back();
-    } catch (error) {
-      console.error('Error creating course:', error);
-      Alert.alert('Erreur', 'Impossible de créer le cours');
+    } catch (err: any) {
+      Alert.alert("Erreur", err?.message || "Impossible de créer le cours.");
     }
   };
 
-  const canSave = courseName.trim() && professorName.trim() && professorHandle.trim();
+  const input = {
+    backgroundColor: c.cardAlt, borderRadius: 14, paddingHorizontal: 14,
+    paddingVertical: 13, color: c.textPrimary, borderWidth: 1,
+    borderColor: c.border, fontSize: 15,
+  };
+
+  const label = { color: c.textSecondary, fontSize: 13, fontWeight: "600" as const, marginBottom: 8 };
+  const section = { gap: 8 as const };
 
   return (
-    <View style={styles.container}>
-      <ScrollView 
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        {/* Header */}
-        <View style={styles.header}>
-          <Pressable onPress={() => router.back()} style={styles.cancelButton}>
-            <Text style={styles.cancelText}>Annuler</Text>
-          </Pressable>
-          <Text style={styles.title}>Nouveau Cours</Text>
-          <Pressable 
-            onPress={handleSave} 
-            disabled={!canSave}
-            style={[styles.saveButton, !canSave && styles.saveButtonDisabled]}
-          >
-            <Text style={[styles.saveText, !canSave && styles.saveTextDisabled]}>
-              Créer
-            </Text>
-          </Pressable>
+    <View style={{ flex: 1, backgroundColor: c.background }}>
+      {/* ── Header ── */}
+      <View style={{
+        paddingTop: insets.top + 14, paddingHorizontal: 20, paddingBottom: 14,
+        borderBottomWidth: 1, borderBottomColor: c.border,
+        flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+      }}>
+        <Pressable onPress={() => router.back()}
+          style={({ pressed }) => [{ padding: 8, borderRadius: 10,
+            backgroundColor: c.cardAlt }, pressed && { opacity: 0.7 }]}>
+          <Text style={{ color: c.textSecondary, fontWeight: "600", fontSize: 15 }}>Annuler</Text>
+        </Pressable>
+        <Text style={{ color: c.textPrimary, fontSize: 17, fontWeight: "800" }}>Nouveau cours</Text>
+        <Pressable onPress={handleSave} disabled={!canSave}
+          style={({ pressed }) => [{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 10,
+            backgroundColor: canSave ? c.accentPurple : c.cardAlt }, pressed && { opacity: 0.8 }]}>
+          <Text style={{ color: canSave ? "#fff" : c.textSecondary, fontWeight: "800", fontSize: 15 }}>Créer</Text>
+        </Pressable>
+      </View>
+
+      <ScrollView showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 24, paddingBottom: 40, gap: 24 }}>
+
+        {/* Nom */}
+        <View style={section}>
+          <Text style={label}>Nom du cours</Text>
+          <TextInput value={name} onChangeText={setName} autoFocus
+            placeholder="Ex : Réseaux & Protocoles"
+            placeholderTextColor={c.textSecondary} style={input} />
         </View>
 
-        {/* Form */}
-        <View style={styles.form}>
-          {/* Course Name */}
-          <View style={styles.field}>
-            <Text style={styles.label}>Nom du cours</Text>
-            <TextInput
-              style={styles.input}
-              value={courseName}
-              onChangeText={setCourseName}
-              placeholder="Ex: Réseaux & Protocoles"
-              placeholderTextColor={theme.colors.textSubtle}
-              autoFocus
-            />
+        {/* Semestre */}
+        <View style={section}>
+          <Text style={label}>Semestre</Text>
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            {SEMESTERS.map(s => (
+              <Pressable key={s} onPress={() => setSemester(s)}
+                style={{ flex: 1, height: 44, borderRadius: 12, alignItems: "center",
+                  justifyContent: "center", borderWidth: 1.5,
+                  borderColor: semester === s ? color : c.border,
+                  backgroundColor: semester === s ? color + "22" : c.cardAlt }}>
+                <Text style={{ color: semester === s ? color : c.textSecondary,
+                  fontWeight: "700", fontSize: 15 }}>{s}</Text>
+              </Pressable>
+            ))}
           </View>
+        </View>
 
-          {/* Semester Selection */}
-          <View style={styles.field}>
-            <Text style={styles.label}>Semestre</Text>
-            <View style={styles.semesterRow}>
-              {SEMESTERS.map((sem) => (
-                <Pressable
-                  key={sem}
-                  onPress={() => setSelectedSemester(sem as 'S1' | 'S2')}
-                  style={[
-                    styles.semesterChip,
-                    selectedSemester === sem && [
-                      styles.semesterChipActive,
-                      { backgroundColor: selectedColor }
-                    ]
-                  ]}
-                >
-                  <Text style={[
-                    styles.semesterText,
-                    selectedSemester === sem && styles.semesterTextActive
-                  ]}>
-                    {sem}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
+        {/* Icône */}
+        <View style={section}>
+          <Text style={label}>Icône</Text>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+            {ICONS.map(ic => (
+              <Pressable key={ic} onPress={() => setIcon(ic)}
+                style={{ width: 52, height: 52, borderRadius: 14, alignItems: "center",
+                  justifyContent: "center", borderWidth: 2,
+                  borderColor: icon === ic ? color : c.border,
+                  backgroundColor: icon === ic ? color + "22" : c.cardAlt }}>
+                <Text style={{ fontSize: 26 }}>{ic}</Text>
+              </Pressable>
+            ))}
           </View>
+        </View>
 
-          {/* Icon Selection */}
-          <View style={styles.field}>
-            <Text style={styles.label}>Icône</Text>
-            <View style={styles.iconsGrid}>
-              {ICONS.map((icon) => (
-                <Pressable
-                  key={icon}
-                  onPress={() => setSelectedIcon(icon)}
-                  style={[
-                    styles.iconChip,
-                    selectedIcon === icon && [
-                      styles.iconChipActive,
-                      { backgroundColor: `${selectedColor}20`, borderColor: selectedColor }
-                    ]
-                  ]}
-                >
-                  <Text style={styles.iconEmoji}>{icon}</Text>
-                </Pressable>
-              ))}
-            </View>
+        {/* Couleur */}
+        <View style={section}>
+          <Text style={label}>Couleur accent</Text>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
+            {COLORS.map(col => (
+              <Pressable key={col} onPress={() => setColor(col)}
+                style={{ width: 44, height: 44, borderRadius: 22,
+                  backgroundColor: col, alignItems: "center", justifyContent: "center",
+                  borderWidth: 3, borderColor: color === col ? "#fff" : "transparent" }}>
+                {color === col && <Ionicons name="checkmark" size={20} color="#fff" />}
+              </Pressable>
+            ))}
           </View>
+        </View>
 
-          {/* Color Selection */}
-          <View style={styles.field}>
-            <Text style={styles.label}>Couleur</Text>
-            <View style={styles.colorsGrid}>
-              {COLORS.map((color) => (
-                <Pressable
-                  key={color}
-                  onPress={() => setSelectedColor(color)}
-                  style={[
-                    styles.colorChip,
-                    { backgroundColor: color },
-                    selectedColor === color && styles.colorChipActive
-                  ]}
-                >
-                  {selectedColor === color && (
-                    <Text style={styles.colorCheckmark}>✓</Text>
-                  )}
-                </Pressable>
-              ))}
-            </View>
-          </View>
+        {/* Professeur */}
+        <View style={section}>
+          <Text style={label}>Professeur</Text>
+          <TextInput value={profName} onChangeText={setProfName}
+            placeholder="Nom complet"
+            placeholderTextColor={c.textSecondary} style={input} />
+          <TextInput value={profHandle} onChangeText={setProfHandle}
+            placeholder="@pseudo"
+            placeholderTextColor={c.textSecondary} style={[input, { marginTop: 10 }]}
+            autoCapitalize="none" />
+        </View>
 
-          {/* Professor Info */}
-          <View style={styles.field}>
-            <Text style={styles.label}>Professeur</Text>
-            <TextInput
-              style={styles.input}
-              value={professorName}
-              onChangeText={setProfessorName}
-              placeholder="Nom du professeur"
-              placeholderTextColor={theme.colors.textSubtle}
-            />
-          </View>
-
-          <View style={styles.field}>
-            <Text style={styles.label}>Handle (optionnel)</Text>
-            <TextInput
-              style={styles.input}
-              value={professorHandle}
-              onChangeText={(text) => {
-                // Ensure @ prefix
-                const handle = text.startsWith('@') ? text : `@${text}`;
-                setProfessorHandle(handle);
-              }}
-              placeholder="@username"
-              placeholderTextColor={theme.colors.textSubtle}
-              autoCapitalize="none"
-            />
-          </View>
-
-          {/* Preview Card */}
-          <View style={styles.previewSection}>
-            <Text style={styles.label}>Aperçu</Text>
-            <View style={[styles.previewCard, { borderLeftColor: selectedColor }]}>
-              <View style={styles.previewHeader}>
-                <View style={[styles.previewIcon, { backgroundColor: `${selectedColor}15` }]}>
-                  <Text style={styles.previewEmoji}>{selectedIcon}</Text>
-                </View>
-                <View style={[styles.previewBadge, { backgroundColor: `${selectedColor}20` }]}>
-                  <Text style={[styles.previewBadgeText, { color: selectedColor }]}>
-                    {selectedSemester}
-                  </Text>
-                </View>
+        {/* Aperçu */}
+        <View style={section}>
+          <Text style={label}>Aperçu</Text>
+          <View style={{ backgroundColor: c.card, borderRadius: 20, padding: 16,
+            borderWidth: 1, borderColor: c.border, borderLeftWidth: 4, borderLeftColor: color }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+              <View style={{ width: 52, height: 52, borderRadius: 14,
+                backgroundColor: color + "22", alignItems: "center", justifyContent: "center" }}>
+                <Text style={{ fontSize: 26 }}>{icon}</Text>
               </View>
-              <Text style={styles.previewTitle}>
-                {courseName || 'Nom du cours'}
-              </Text>
-              <Text style={styles.previewProf}>
-                {professorName || 'Professeur'}
-              </Text>
-              <Text style={styles.previewHandle}>
-                {professorHandle || '@username'}
-              </Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: c.textPrimary, fontWeight: "800", fontSize: 16 }}>
+                  {name || "Nom du cours"}
+                </Text>
+                <Text style={{ color: c.textSecondary, fontSize: 13, marginTop: 2 }}>
+                  {profName || "Professeur"} · {semester}
+                </Text>
+              </View>
+              <View style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999,
+                backgroundColor: color + "22", borderWidth: 1, borderColor: color }}>
+                <Text style={{ color: color, fontWeight: "700", fontSize: 12 }}>{semester}</Text>
+              </View>
             </View>
           </View>
         </View>
+
       </ScrollView>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.bg,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: 40,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-  },
-  cancelButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-  },
-  cancelText: {
-    color: theme.colors.text,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  title: {
-    color: theme.colors.text,
-    fontSize: 18,
-    fontWeight: '800',
-  },
-  saveButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: theme.radius.pill,
-    backgroundColor: theme.colors.accent,
-  },
-  saveButtonDisabled: {
-    backgroundColor: theme.colors.surface,
-  },
-  saveText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  saveTextDisabled: {
-    color: theme.colors.textMuted,
-  },
-  form: {
-    paddingHorizontal: 20,
-    paddingTop: 24,
-    gap: 24,
-  },
-  field: {
-    gap: 12,
-  },
-  label: {
-    color: theme.colors.text,
-    fontSize: 15,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  input: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.md,
-    padding: 16,
-    color: theme.colors.text,
-    fontSize: 16,
-    fontWeight: '600',
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  semesterRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  semesterChip: {
-    flex: 1,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: theme.radius.md,
-    backgroundColor: theme.colors.surface,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: theme.colors.border,
-  },
-  semesterChipActive: {
-    borderColor: 'transparent',
-  },
-  semesterText: {
-    color: theme.colors.textMuted,
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  semesterTextActive: {
-    color: '#ffffff',
-  },
-  iconsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  iconChip: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: theme.colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: theme.colors.border,
-  },
-  iconChipActive: {
-    borderWidth: 3,
-  },
-  iconEmoji: {
-    fontSize: 28,
-  },
-  colorsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  colorChip: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 3,
-    borderColor: 'transparent',
-  },
-  colorChipActive: {
-    borderColor: '#ffffff',
-  },
-  colorCheckmark: {
-    color: '#ffffff',
-    fontSize: 24,
-    fontWeight: '800',
-  },
-  previewSection: {
-    gap: 12,
-    marginTop: 8,
-  },
-  previewCard: {
-    backgroundColor: '#121214',
-    borderRadius: theme.radius.lg,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    borderLeftWidth: 4,
-    gap: 12,
-  },
-  previewHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  previewIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  previewEmoji: {
-    fontSize: 28,
-  },
-  previewBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: theme.radius.pill,
-  },
-  previewBadgeText: {
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  previewTitle: {
-    color: theme.colors.text,
-    fontSize: 20,
-    fontWeight: '800',
-    letterSpacing: -0.5,
-  },
-  previewProf: {
-    color: theme.colors.textMuted,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  previewHandle: {
-    color: theme.colors.textSubtle,
-    fontSize: 13,
-    fontWeight: '600',
-  },
-});

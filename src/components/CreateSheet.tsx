@@ -173,7 +173,7 @@ const styles = StyleSheet.create({
     minHeight: 56,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: "rgba(255,255,255,0.08)",
     backgroundColor: "#111119",
     flexDirection: "row",
     alignItems: "center",

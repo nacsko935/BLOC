@@ -7,7 +7,7 @@ import {
   signOut as signOutService,
   signUp as signUpService,
 } from "../lib/services/authService";
-import { getMyProfile, upsertMyProfile } from "../lib/services/profileService";
+import { getMyProfile, upsertMyProfile, uploadAvatar } from "../lib/services/profileService";
 import { Profile } from "../types/db";
 import { registerPushToken, disablePushTokens } from "../lib/notifications";
 import { track } from "../lib/services/analyticsService";
@@ -23,6 +23,7 @@ type AuthState = {
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   updateProfile: (patch: Partial<Profile>) => Promise<void>;
+  updateAvatar: (localUri: string) => Promise<void>;
 };
 
 let unsubscribeAuth: (() => void) | null = null;

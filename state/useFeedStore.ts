@@ -44,14 +44,20 @@ export const useFeedStore = create<FeedState>((set, get) => ({
 
   refresh: async (filiere) => {
     set({ refreshing: true, loading: true });
-    const result = await fetchFeed({ filiere, limit: 10 });
-    set({
-      posts: result.posts,
-      cursor: result.nextCursor,
-      hasMore: Boolean(result.nextCursor),
-      loading: false,
-      refreshing: false,
-    });
+    try {
+      const result = await fetchFeed({ filiere, limit: 10 });
+      set({
+        posts: result.posts,
+        cursor: result.nextCursor,
+        hasMore: Boolean(result.nextCursor),
+        loading: false,
+        refreshing: false,
+      });
+    } catch {
+      // En cas d'erreur (Supabase non configuré, table inexistante…)
+      // On remet loading à false pour que les posts démo s'affichent
+      set({ loading: false, refreshing: false, posts: [] });
+    }
   },
 
   loadMore: async (filiere) => {

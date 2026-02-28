@@ -1,3 +1,4 @@
+import { useTheme } from "../../core/theme/ThemeProvider";
 import React from "react";
 import { View, Text, Pressable, StyleSheet, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
@@ -79,7 +80,8 @@ interface DashboardWidgetProps {
   onNavigate: (route: string) => void;
 }
 
-export default function DashboardWidget({ onNavigate }: DashboardWidgetProps) {
+export default function DashboardWidget({
+  const { c } = useTheme(); onNavigate }: DashboardWidgetProps) {
   const router = useRouter();
 
   const getPriorityColor = (priority: "high" | "medium" | "low") => {
@@ -231,12 +233,12 @@ const styles = StyleSheet.create({
     fontSize: 20,
   },
   sectionTitle: {
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 18,
     fontWeight: "800",
   },
   sectionAction: {
-    color: theme.colors.accent,
+    color: "#6E5CFF",
     fontSize: 14,
     fontWeight: "700",
   },
@@ -257,11 +259,11 @@ const styles = StyleSheet.create({
   },
   deadlineCard: {
     width: 200,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: "#111111",
     borderRadius: theme.radius.lg,
     padding: 16,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: "rgba(255,255,255,0.10)",
     ...theme.shadow.sm,
   },
   cardPressed: {
@@ -277,14 +279,14 @@ const styles = StyleSheet.create({
     top: 16,
   },
   deadlineTitle: {
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 15,
     fontWeight: "700",
     marginBottom: 6,
     lineHeight: 20,
   },
   deadlineCourse: {
-    color: theme.colors.textMuted,
+    color: "rgba(255,255,255,0.50)",
     fontSize: 12,
     fontWeight: "600",
     marginBottom: 12,
@@ -295,7 +297,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   deadlineTime: {
-    color: theme.colors.accent,
+    color: "#6E5CFF",
     fontSize: 12,
     fontWeight: "700",
   },
@@ -305,12 +307,12 @@ const styles = StyleSheet.create({
   suggestionCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: theme.colors.surface,
+    backgroundColor: "#111111",
     borderRadius: theme.radius.lg,
     padding: 12,
     gap: 12,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: "rgba(255,255,255,0.10)",
   },
   suggestionIcon: {
     fontSize: 32,
@@ -320,18 +322,18 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   suggestionTitle: {
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 14,
     fontWeight: "700",
   },
   suggestionDescription: {
-    color: theme.colors.textMuted,
+    color: "rgba(255,255,255,0.50)",
     fontSize: 12,
     fontWeight: "500",
     lineHeight: 16,
   },
   suggestionArrow: {
-    color: theme.colors.textMuted,
+    color: "rgba(255,255,255,0.50)",
     fontSize: 20,
     fontWeight: "600",
   },
@@ -341,24 +343,24 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: "#111111",
     borderRadius: theme.radius.lg,
     padding: 16,
     alignItems: "center",
     gap: 8,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: "rgba(255,255,255,0.10)",
   },
   statIcon: {
     fontSize: 28,
   },
   statValue: {
-    color: theme.colors.text,
+    color: "#FFFFFF",
     fontSize: 24,
     fontWeight: "800",
   },
   statLabel: {
-    color: theme.colors.textMuted,
+    color: "rgba(255,255,255,0.50)",
     fontSize: 11,
     fontWeight: "600",
     textAlign: "center",

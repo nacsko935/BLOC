@@ -1,3 +1,4 @@
+import { useTheme } from "../theme/ThemeProvider";
 import { PropsWithChildren } from "react";
 import { Text, TextProps } from "react-native";
 import { theme } from "./theme";
@@ -52,7 +53,7 @@ export function AppText({ variant = "body", muted = false, style, children, ...p
       maxFontSizeMultiplier={1.25}
       style={[
         {
-          color: muted ? theme.colors.textMuted : theme.colors.text,
+          color: muted ? "rgba(255,255,255,0.45)" : "#ffffff",
           fontSize: sizes[variant],
           fontWeight: weights[variant],
           lineHeight: lineHeights[variant],

@@ -13,6 +13,8 @@ import { getSessionUser } from "../../auth/authRepo";
 import { ProfileHeader } from "../components/ProfileHeader";
 import { ProfileStats } from "../components/ProfileStats";
 import { ProfileTabs, ProfileTab } from "../components/ProfileTabs";
+import { useTheme } from "../../../core/theme/ThemeProvider";
+
 
 type ActivityPost = {
   id: string;
@@ -62,6 +64,7 @@ const groupData: GroupItem[] = [
 ];
 
 export default function ProfileScreen() {
+  const { c } = useTheme();
   const router = useRouter();
   const [tab, setTab] = useState<ProfileTab>("activite");
   const [user, setUser] = useState<{ name: string; handle: string; bio: string | null } | null>(null);
@@ -238,7 +241,7 @@ const styles = StyleSheet.create({
     paddingTop: 2,
   },
   card: {
-    backgroundColor: "#111111",
+    backgroundColor: "#000000",
     borderWidth: 1,
     borderColor: "#202028",
     borderRadius: 14,

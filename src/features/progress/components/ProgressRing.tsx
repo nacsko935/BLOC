@@ -1,3 +1,4 @@
+import { useTheme } from "../../../core/theme/ThemeProvider";
 import { View } from "react-native";
 import { AppText } from "../../../core/ui/AppText";
 import { theme } from "../../../core/ui/theme";
@@ -16,7 +17,7 @@ export function ProgressRing({ value }: { value: number }) {
         justifyContent: "center",
       }}
     >
-      <AppText style={{ color: theme.colors.accent, fontWeight: "800" }}>{v}%</AppText>
+      <AppText style={{ color: "#6E5CFF", fontWeight: "800" }}>{v}%</AppText>
     </View>
   );
 }
