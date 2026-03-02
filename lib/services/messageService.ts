@@ -1,13 +1,5 @@
 /**
- * messageService.ts — schéma BLOC v2
- *
- * conversations: id, participant_a, participant_b, type ('dm'|'group'),
- *                title, description, filiere, privacy, avatar_color, created_by, created_at
- * messages:      id, conversation_id, sender_id, content, media_url, media_type, created_at
- *
- * Pour les DM  → participant_a/participant_b remplis, type='dm'
- * Pour groupes → participant_a=created_by, participant_b=created_by (même valeur), type='group'
- *                Les membres sont dans group_members (id, group_id, user_id)
+ * messageService.ts — BLOC v2 (patché)
  */
 
 import { getSupabaseOrThrow } from "../supabase";
@@ -57,12 +49,23 @@ async function requireUserId() {
   const { data, error } = await supabase.auth.getUser();
   if (error) throw error;
   const id = data.user?.id;
-  if (!id) throw new Error("Session introuvable");
+  if (!id) throw new Error("Session introuvable. Reconnecte-toi.");
   return id;
 }
 
 function initials(label: string) {
   return label.split(" ").slice(0, 2).map(s => s.charAt(0).toUpperCase()).join("");
+}
+
+function formatTimestamp(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  if (diffDays === 0) return d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+  if (diffDays === 1) return "Hier";
+  if (diffDays < 7) return d.toLocaleDateString("fr-FR", { weekday: "short" });
+  return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short" });
 }
 
 // ── fetchInbox ─────────────────────────────────────────────────────────────────
@@ -80,49 +83,57 @@ export async function fetchInbox(): Promise<InboxItem[]> {
   if (error) throw error;
   if (!convs || convs.length === 0) return [];
 
-  const items = await Promise.all(
-    convs.map(async (conv: any) => {
-      const conversationId = conv.id as string;
-      const otherId =
-        conv.participant_a === userId ? conv.participant_b : conv.participant_a;
+  // Batch fetch profils
+  const otherIds = Array.from(new Set(
+    convs.map((c: any) => c.participant_a === userId ? c.participant_b : c.participant_a)
+  ));
+  const { data: profilesData } = await supabase
+    .from("profiles")
+    .select("id,username,full_name,avatar_url")
+    .in("id", otherIds);
+  const profileMap = new Map((profilesData ?? []).map((p: any) => [p.id, p]));
 
-      const profileRes = await supabase
-        .from("profiles")
-        .select("id,username,full_name,avatar_url")
-        .eq("id", otherId)
-        .maybeSingle();
+  // Batch fetch derniers messages
+  const convIds = convs.map((c: any) => c.id);
+  const { data: lastMsgsData } = await supabase
+    .from("messages")
+    .select("id,conversation_id,content,created_at")
+    .in("conversation_id", convIds)
+    .order("created_at", { ascending: false });
 
-      const profile = profileRes.data as Pick<Profile, "id" | "username" | "full_name" | "avatar_url"> | null;
-      const name = profile?.full_name || profile?.username || "Utilisateur";
+  const lastMsgByConv = new Map<string, any>();
+  for (const msg of (lastMsgsData ?? [])) {
+    if (!lastMsgByConv.has(msg.conversation_id)) {
+      lastMsgByConv.set(msg.conversation_id, msg);
+    }
+  }
 
-      const lastMsgRes = await supabase
-        .from("messages")
-        .select("id,content,created_at,sender_id")
-        .eq("conversation_id", conversationId)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+  const items: InboxItem[] = convs.map((conv: any) => {
+    const conversationId = conv.id as string;
+    const otherId = conv.participant_a === userId ? conv.participant_b : conv.participant_a;
+    const profile = profileMap.get(otherId);
+    const name = profile?.full_name || profile?.username || "Utilisateur";
+    const lastMsg = lastMsgByConv.get(conversationId);
+    return {
+      conversationId,
+      name,
+      lastMessage: lastMsg?.content || "Aucun message",
+      timestamp: lastMsg?.created_at ? formatTimestamp(lastMsg.created_at) : "",
+      unreadCount: 0,
+      avatar: initials(name),
+      avatarUrl: profile?.avatar_url ?? null,
+      otherUserId: otherId,
+    };
+  });
 
-      const lastMsg = lastMsgRes.data;
-      const lastMessage = lastMsg?.content || "Aucun message";
-      const timestamp = lastMsg?.created_at
-        ? new Date(lastMsg.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
-        : "";
-
-      return {
-        conversationId,
-        name,
-        lastMessage,
-        timestamp,
-        unreadCount: 0,
-        avatar: initials(name),
-        avatarUrl: profile?.avatar_url ?? null,
-        otherUserId: otherId,
-      } as InboxItem;
-    })
-  );
-
-  return items.sort((a, b) => (a.timestamp < b.timestamp ? 1 : -1));
+  return items.sort((a, b) => {
+    const getMs = (item: InboxItem) => {
+      const lastMsg = lastMsgByConv.get(item.conversationId);
+      const conv = convs.find((c: any) => c.id === item.conversationId);
+      return new Date(lastMsg?.created_at || conv?.created_at || 0).getTime();
+    };
+    return getMs(b) - getMs(a);
+  });
 }
 
 // ── fetchGroups ────────────────────────────────────────────────────────────────
@@ -131,79 +142,66 @@ export async function fetchGroups(): Promise<GroupListItem[]> {
   const supabase = getSupabaseOrThrow();
   const userId = await requireUserId();
 
-  // Tous les groupes publics
   const { data: allGroups, error: groupsError } = await supabase
     .from("groups")
     .select("id, name, description, filiere, privacy, avatar_color, created_at")
     .order("created_at", { ascending: false });
 
-  if (groupsError) {
-    // Table groups n'existe pas encore → retourner []
-    console.warn("groups table not found:", groupsError.message);
-    return [];
-  }
-
+  if (groupsError) { console.warn("groups error:", groupsError.message); return []; }
   if (!allGroups || allGroups.length === 0) return [];
 
-  // Groupes dont je suis membre
-  const { data: myMemberships } = await supabase
-    .from("group_members")
-    .select("group_id")
-    .eq("user_id", userId);
+  const groupIds = allGroups.map((g: any) => g.id);
 
+  // Mes appartenances
+  const { data: myMemberships } = await supabase
+    .from("group_members").select("group_id").eq("user_id", userId);
   const myGroupIds = new Set((myMemberships ?? []).map((m: any) => m.group_id));
 
-  const items = await Promise.all(
-    allGroups.map(async (group: any) => {
-      const groupId = group.id as string;
-      const joined = myGroupIds.has(groupId);
+  // Comptage membres (batch)
+  const { data: membersData } = await supabase
+    .from("group_members").select("group_id").in("group_id", groupIds);
+  const memberCountMap = new Map<string, number>();
+  for (const m of (membersData ?? [])) {
+    memberCountMap.set(m.group_id, (memberCountMap.get(m.group_id) || 0) + 1);
+  }
 
-      const [memberCountRes, lastMessageRes] = await Promise.all([
-        supabase
-          .from("group_members")
-          .select("user_id", { count: "exact", head: true })
-          .eq("group_id", groupId),
-        supabase
-          .from("group_messages")
-          .select("content,created_at")
-          .eq("group_id", groupId)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle(),
-      ]);
+  // Derniers messages (batch)
+  const { data: lastGroupMsgs } = await supabase
+    .from("group_messages").select("group_id,content,created_at")
+    .in("group_id", groupIds).order("created_at", { ascending: false });
+  const lastGroupMsgMap = new Map<string, any>();
+  for (const msg of (lastGroupMsgs ?? [])) {
+    if (!lastGroupMsgMap.has(msg.group_id)) lastGroupMsgMap.set(msg.group_id, msg);
+  }
 
-      return {
-        groupId,
-        name: group.name || "Groupe",
-        description: group.description || "",
-        filiere: group.filiere ?? null,
-        privacy: (group.privacy || "public") as "public" | "private",
-        memberCount: memberCountRes.count || 0,
-        lastMessage: lastMessageRes.data?.content || "Aucun message",
-        lastActivity: lastMessageRes.data?.created_at
-          ? new Date(lastMessageRes.data.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
-          : "",
-        unreadCount: 0,
-        avatarColor: group.avatar_color || "#654BFF",
-        joined,
-      } as GroupListItem;
-    })
-  );
-
-  return items;
+  return allGroups.map((group: any) => {
+    const groupId = group.id as string;
+    const lastMsg = lastGroupMsgMap.get(groupId);
+    return {
+      groupId,
+      name: group.name || "Groupe",
+      description: group.description || "",
+      filiere: group.filiere ?? null,
+      privacy: (group.privacy || "public") as "public" | "private",
+      memberCount: memberCountMap.get(groupId) || 0,
+      lastMessage: lastMsg?.content || "Aucun message",
+      lastActivity: lastMsg?.created_at ? formatTimestamp(lastMsg.created_at) : "",
+      unreadCount: 0,
+      avatarColor: group.avatar_color || "#654BFF",
+      joined: myGroupIds.has(groupId),
+    } as GroupListItem;
+  });
 }
 
 // ── createGroup ────────────────────────────────────────────────────────────────
 
 export async function createGroup(input: {
-  name: string;
-  description?: string;
-  filiere?: string;
-  privacy: "public" | "private";
+  name: string; description?: string; filiere?: string; privacy: "public" | "private";
 }): Promise<string> {
   const supabase = getSupabaseOrThrow();
   const userId = await requireUserId();
 
+  const colors = ["#654BFF", "#2A8CFF", "#7C52FF", "#4A7BFF", "#FF6B6B"];
   const { data, error } = await supabase
     .from("groups")
     .insert({
@@ -211,19 +209,15 @@ export async function createGroup(input: {
       description: input.description?.trim() || null,
       filiere: input.filiere?.trim() || null,
       privacy: input.privacy,
-      avatar_color: ["#654BFF","#2A8CFF","#7C52FF","#4A7BFF","#FF6B6B"][Math.floor(Math.random()*5)],
+      avatar_color: colors[Math.floor(Math.random() * colors.length)],
       created_by: userId,
     })
-    .select("id")
-    .single();
+    .select("id").single();
 
   if (error) throw error;
 
   const groupId = data.id as string;
-
-  // Ajouter le créateur comme membre
   await supabase.from("group_members").insert({ group_id: groupId, user_id: userId });
-
   return groupId;
 }
 
@@ -243,11 +237,8 @@ export async function joinGroup(groupId: string): Promise<void> {
 export async function leaveGroup(groupId: string): Promise<void> {
   const supabase = getSupabaseOrThrow();
   const userId = await requireUserId();
-  const { error } = await supabase
-    .from("group_members")
-    .delete()
-    .eq("group_id", groupId)
-    .eq("user_id", userId);
+  const { error } = await supabase.from("group_members")
+    .delete().eq("group_id", groupId).eq("user_id", userId);
   if (error) throw error;
 }
 
@@ -265,30 +256,23 @@ export async function fetchConversationMessages(conversationId: string): Promise
 
   const rows = data ?? [];
   const senderIds = Array.from(new Set(rows.map((m: any) => m.sender_id)));
-
-  let profileMap = new Map<string, Profile>();
+  let profileMap = new Map<string, any>();
   if (senderIds.length > 0) {
-    const profilesRes = await supabase
-      .from("profiles")
-      .select("id,username,full_name,avatar_url")
-      .in("id", senderIds);
-    if (!profilesRes.error) {
-      profileMap = new Map((profilesRes.data ?? []).map((p: any) => [p.id, p as Profile]));
-    }
+    const res = await supabase.from("profiles")
+      .select("id,username,full_name,avatar_url").in("id", senderIds);
+    if (!res.error) profileMap = new Map((res.data ?? []).map((p: any) => [p.id, p]));
   }
 
-  return rows.map((message: any) => {
-    const profile = profileMap.get(message.sender_id);
+  return rows.map((m: any) => {
+    const p = profileMap.get(m.sender_id);
     return {
-      id: message.id,
-      senderId: message.sender_id,
-      senderName: profile?.full_name || profile?.username || "Utilisateur",
-      text: message.content || "",
-      timestamp: new Date(message.created_at).toLocaleTimeString("fr-FR", {
-        hour: "2-digit", minute: "2-digit",
-      }),
-      mediaUrl: message.media_url ?? null,
-      mediaType: message.media_type ?? null,
+      id: m.id,
+      senderId: m.sender_id,
+      senderName: p?.full_name || p?.username || "Utilisateur",
+      text: m.content || "",
+      timestamp: new Date(m.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }),
+      mediaUrl: m.media_url ?? null,
+      mediaType: m.media_type ?? null,
     } as ChatMessage;
   });
 }
@@ -303,18 +287,15 @@ export async function fetchGroupMessages(groupId: string): Promise<ChatMessage[]
     .eq("group_id", groupId)
     .order("created_at", { ascending: true });
 
-  if (error) {
-    console.warn("group_messages table:", error.message);
-    return [];
-  }
+  if (error) { console.warn("group_messages error:", error.message); return []; }
 
   const rows = data ?? [];
   const senderIds = Array.from(new Set(rows.map((m: any) => m.sender_id)));
-  let profileMap = new Map<string, Profile>();
-
+  let profileMap = new Map<string, any>();
   if (senderIds.length > 0) {
-    const res = await supabase.from("profiles").select("id,username,full_name,avatar_url").in("id", senderIds);
-    if (!res.error) profileMap = new Map((res.data ?? []).map((p: any) => [p.id, p as Profile]));
+    const res = await supabase.from("profiles")
+      .select("id,username,full_name,avatar_url").in("id", senderIds);
+    if (!res.error) profileMap = new Map((res.data ?? []).map((p: any) => [p.id, p]));
   }
 
   return rows.map((m: any) => {
@@ -352,42 +333,64 @@ export async function sendGroupMessage(groupId: string, content: string): Promis
     sender_id: userId,
     content: content.trim(),
   });
-  if (error) throw error;
+  if (error) {
+    console.error("sendGroupMessage error:", error.message, error.code);
+    throw error;
+  }
 }
 
 // ── markConversationRead ──────────────────────────────────────────────────────
 
 export async function markConversationRead(_conversationId: string): Promise<void> {
-  // Pas de last_read_at dans le schéma simplifié — no-op
+  // no-op (pas de champ last_read_at dans ce schéma)
 }
 
 // ── ensureDmConversation ──────────────────────────────────────────────────────
 
 export async function ensureDmConversation(otherUserId: string): Promise<string> {
   const supabase = getSupabaseOrThrow();
+
+  // Utiliser la fonction RPC atomique (définie dans MESSAGING_FIX.sql)
+  const { data: rpcData, error: rpcError } = await supabase.rpc("get_or_create_dm", {
+    other_user_id: otherUserId,
+  });
+
+  if (!rpcError && rpcData) return rpcData as string;
+
+  // Fallback client-side si RPC non déployé
+  console.warn("Fallback client ensureDmConversation:", rpcError?.message);
   const userId = await requireUserId();
 
-  // Chercher conversation DM existante dans les deux sens
   const { data: existing } = await supabase
-    .from("conversations")
-    .select("id")
+    .from("conversations").select("id")
     .or(
       `and(participant_a.eq.${userId},participant_b.eq.${otherUserId}),` +
       `and(participant_a.eq.${otherUserId},participant_b.eq.${userId})`
     )
-    .limit(1)
-    .maybeSingle();
+    .limit(1).maybeSingle();
 
   if (existing?.id) return existing.id as string;
 
-  // Créer nouvelle conversation DM
   const { data: created, error } = await supabase
     .from("conversations")
     .insert({ participant_a: userId, participant_b: otherUserId })
-    .select("id")
-    .single();
+    .select("id").single();
 
-  if (error) throw error;
+  if (error) {
+    if (error.code === "23505") {
+      // Race condition : retry
+      const { data: retry } = await supabase
+        .from("conversations").select("id")
+        .or(
+          `and(participant_a.eq.${userId},participant_b.eq.${otherUserId}),` +
+          `and(participant_a.eq.${otherUserId},participant_b.eq.${userId})`
+        )
+        .limit(1).maybeSingle();
+      if (retry?.id) return retry.id as string;
+    }
+    throw error;
+  }
+
   return created.id as string;
 }
 
@@ -399,12 +402,16 @@ export function subscribeToConversation(
 ): () => void {
   const supabase = getSupabaseOrThrow();
   const channel = supabase
-    .channel(`messages-${conversationId}`)
+    .channel(`conv:${conversationId}`)
     .on("postgres_changes", {
-      event: "INSERT", schema: "public", table: "messages",
+      event: "INSERT",
+      schema: "public",
+      table: "messages",
       filter: `conversation_id=eq.${conversationId}`,
     }, () => onMessageInserted())
-    .subscribe();
+    .subscribe((status) => {
+      console.log(`[Realtime] conv:${conversationId} →`, status);
+    });
 
   return () => { supabase.removeChannel(channel); };
 }
@@ -417,12 +424,16 @@ export function subscribeToGroup(
 ): () => void {
   const supabase = getSupabaseOrThrow();
   const channel = supabase
-    .channel(`group-messages-${groupId}`)
+    .channel(`group:${groupId}`)
     .on("postgres_changes", {
-      event: "INSERT", schema: "public", table: "group_messages",
+      event: "INSERT",
+      schema: "public",
+      table: "group_messages",
       filter: `group_id=eq.${groupId}`,
     }, () => onMessageInserted())
-    .subscribe();
+    .subscribe((status) => {
+      console.log(`[Realtime] group:${groupId} →`, status);
+    });
 
   return () => { supabase.removeChannel(channel); };
 }
