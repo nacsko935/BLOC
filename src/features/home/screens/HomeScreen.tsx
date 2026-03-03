@@ -7,8 +7,8 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../../core/theme/ThemeProvider";
-import { PostCard } from "../../../components/PostCard";
-import { TrendCard } from "../../../components/TrendCard";
+import { PostCard } from "../../../../src/components/PostCard";
+import { TrendCard } from "../../../../src/components/TrendCard";
 import { FeedPost } from "../../../../types/db";
 import { trendsMock, TrendItem } from "../homeMock";
 import { useFeedStore } from "../../../../state/useFeedStore";
@@ -50,18 +50,20 @@ const DEMO_FEED_POSTS: FeedPost[] = [
 /* ── Skeleton card ─────────────────────────────────────────────── */
 function SkeletonPost({ c }: { c: any }) {
   return (
-    <View style={{ backgroundColor: c.card, borderBottomWidth: 1, borderBottomColor: c.border, padding: 16 }}>
-      <View style={{ flexDirection: "row", gap: 12, marginBottom: 12 }}>
-        <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: c.cardAlt }} />
-        <View style={{ gap: 8, flex: 1 }}>
-          <View style={{ height: 14, width: "50%", borderRadius: 7, backgroundColor: c.cardAlt }} />
-          <View style={{ height: 12, width: "30%", borderRadius: 6, backgroundColor: c.cardAlt }} />
+    <View style={{ paddingHorizontal: 12, paddingTop: 10, paddingBottom: 2 }}>
+      <View style={{ backgroundColor: c.card, borderWidth: 1, borderColor: c.border, borderRadius: 24, padding: 16 }}>
+        <View style={{ flexDirection: "row", gap: 12, marginBottom: 12 }}>
+          <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: c.cardAlt }} />
+          <View style={{ gap: 8, flex: 1 }}>
+            <View style={{ height: 14, width: "50%", borderRadius: 7, backgroundColor: c.cardAlt }} />
+            <View style={{ height: 12, width: "30%", borderRadius: 6, backgroundColor: c.cardAlt }} />
+          </View>
         </View>
-      </View>
-      <View style={{ gap: 6 }}>
-        <View style={{ height: 13, width: "95%", borderRadius: 6, backgroundColor: c.cardAlt }} />
-        <View style={{ height: 13, width: "80%", borderRadius: 6, backgroundColor: c.cardAlt }} />
-        <View style={{ height: 13, width: "60%", borderRadius: 6, backgroundColor: c.cardAlt }} />
+        <View style={{ gap: 6 }}>
+          <View style={{ height: 13, width: "95%", borderRadius: 6, backgroundColor: c.cardAlt }} />
+          <View style={{ height: 13, width: "80%", borderRadius: 6, backgroundColor: c.cardAlt }} />
+          <View style={{ height: 13, width: "60%", borderRadius: 6, backgroundColor: c.cardAlt }} />
+        </View>
       </View>
     </View>
   );

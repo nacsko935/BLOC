@@ -1,357 +1,403 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator, Alert, Animated, FlatList, Image,
-  Modal, Pressable, ScrollView, Text, TextInput, View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
-import * as DocumentPicker from "expo-document-picker";
+import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuthStore } from "../../state/useAuthStore";
-import { useTheme } from "../../src/core/theme/ThemeProvider";
 import { useFeedStore } from "../../state/useFeedStore";
+import { useTheme } from "../../src/core/theme/ThemeProvider";
 import { PostCard } from "../../src/components/PostCard";
+import { FeedPost } from "../../types/db";
 
-type ProfileTab = "posts"|"contenus"|"groupes";
+type ProfileTab = "posts" | "modules" | "projects" | "badges";
+
 const TABS: { key: ProfileTab; label: string }[] = [
-  { key:"posts",    label:"Posts"    },
-  { key:"contenus", label:"Contenus" },
-  { key:"groupes",  label:"Groupes"  },
+  { key: "posts", label: "Posts" },
+  { key: "modules", label: "Modules" },
+  { key: "projects", label: "Projets" },
+  { key: "badges", label: "Badges" },
 ];
 
-export default function ProfileTabRoute() {
-  const router  = useRouter();
-  const insets  = useSafeAreaInsets();
-  const { c, isDark } = useTheme();
-  const { profile, user, updateProfile, updateAvatar, signOut } = useAuthStore();
-  const { posts, refresh, toggleLike, toggleSave, openComments, addComment, commentsByPost, commentsLoading, createPost } = useFeedStore();
+const MODULES = [
+  { id: "m1", name: "SQL avance", progress: 72 },
+  { id: "m2", name: "Reseaux fondamentaux", progress: 44 },
+];
 
-  const [tab,         setTab]         = useState<ProfileTab>("posts");
+const PROJECTS = [
+  { id: "p1", title: "Revision partiels S2", tasks: 12, done: 8 },
+  { id: "p2", title: "Groupe BDD - mini projet", tasks: 9, done: 4 },
+];
+
+const BADGES = [
+  { id: "b1", name: "Streak 7 jours", unlocked: true },
+  { id: "b2", name: "Quiz Master", unlocked: true },
+  { id: "b3", name: "Top contributeur", unlocked: false },
+];
+
+function mapRoleLabel(rawRole?: string | null) {
+  const value = (rawRole || "").toLowerCase();
+  if (value.includes("prof")) return "Professeur";
+  if (value.includes("ecole") || value.includes("school")) return "Ecole";
+  return "Etudiant";
+}
+
+export default function ProfileTabRoute() {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { c } = useTheme();
+  const { profile, user, updateProfile, updateAvatar } = useAuthStore();
+  const { posts, refresh, createPost, toggleLike, toggleSave, openComments } = useFeedStore();
+
+  const [tab, setTab] = useState<ProfileTab>("posts");
   const [editVisible, setEditVisible] = useState(false);
   const [postVisible, setPostVisible] = useState(false);
-  const [fullName,    setFullName]    = useState(profile?.full_name||"");
-  const [username,    setUsername]    = useState(profile?.username||"");
-  const [bio,         setBio]         = useState(profile?.bio||"");
-  const [postTitle,   setPostTitle]   = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [posting, setPosting] = useState(false);
+  const [localAvatar, setLocalAvatar] = useState<string | null>(null);
+
+  const [fullName, setFullName] = useState(profile?.full_name || "");
+  const [username, setUsername] = useState(profile?.username || "");
+  const [bio, setBio] = useState(profile?.bio || "");
+  const [filiere, setFiliere] = useState(profile?.filiere || "");
+
+  const [postTitle, setPostTitle] = useState("");
   const [postContent, setPostContent] = useState("");
-  const [postImage,   setPostImage]   = useState<string | null>(null);
-  const [postFile,    setPostFile]    = useState<{ name: string; uri: string; type: "video" | "file" } | null>(null);
-  const [posting,     setPosting]     = useState(false);
-  const [uploading,   setUploading]   = useState(false);
-  const [localAvatar, setLocalAvatar] = useState<string|null>(null);
-  const scrollY = useRef(new Animated.Value(0)).current;
 
-  useEffect(() => { setFullName(profile?.full_name||""); setUsername(profile?.username||""); setBio(profile?.bio||""); }, [profile]);
-  useEffect(() => { refresh(profile?.filiere||undefined).catch(()=>null); }, [refresh, profile?.filiere]);
+  useEffect(() => {
+    setFullName(profile?.full_name || "");
+    setUsername(profile?.username || "");
+    setBio(profile?.bio || "");
+    setFiliere(profile?.filiere || "");
+  }, [profile]);
 
-  const myPosts = useMemo(() => posts.filter(p => p.author?.id === user?.id || p.author_id === user?.id), [posts, user?.id]);
-  const headerOpacity = scrollY.interpolate({ inputRange:[80,140], outputRange:[0,1], extrapolate:"clamp" });
+  useEffect(() => {
+    refresh(profile?.filiere || undefined).catch(() => null);
+  }, [refresh, profile?.filiere]);
 
-  const handlePhoto = () => Alert.alert("Photo de profil","", [
-    { text:"Galerie",        onPress: pickLib },
-    { text:"Appareil photo", onPress: pickCam },
-    { text:"Annuler", style:"cancel" },
-  ]);
+  const displayName = useMemo(
+    () => profile?.display_name || profile?.full_name || profile?.username || user?.email?.split("@")[0] || "Utilisateur",
+    [profile, user?.email]
+  );
+  const handle = useMemo(
+    () => profile?.username || user?.email?.split("@")[0] || "utilisateur",
+    [profile?.username, user?.email]
+  );
+  const school = useMemo(
+    () => profile?.school_name || profile?.ecole || null,
+    [profile?.school_name, profile?.ecole]
+  );
+  const role = useMemo(
+    () => mapRoleLabel(profile?.role || profile?.account_type || profile?.niveau),
+    [profile?.role, profile?.account_type, profile?.niveau]
+  );
+  const avatarUri = localAvatar || profile?.avatar_url || null;
 
-  const doUpload = async (uri: string) => {
-    setLocalAvatar(uri); setUploading(true);
-    try { await updateAvatar(uri); }
-    catch (e:any) { Alert.alert("Erreur", e?.message); }
-    finally { setUploading(false); }
+  const myPosts = useMemo(() => {
+    const uid = user?.id;
+    if (!uid) return [] as FeedPost[];
+    return posts
+      .filter((p) => p.user_id === uid || p.author_id === uid || p.author?.id === uid)
+      .map((p) => (p.author ? p : { ...p, author: profile || null }));
+  }, [posts, profile, user?.id]);
+
+  const uploadAvatar = async (uri: string) => {
+    setLocalAvatar(uri);
+    setUploading(true);
+    try {
+      await updateAvatar(uri);
+    } catch (e: any) {
+      Alert.alert("Erreur", e?.message || "Upload avatar impossible.");
+    } finally {
+      setUploading(false);
+    }
   };
-  const pickLib = async () => {
+
+  const pickFromLibrary = async () => {
     const { granted } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!granted) return;
-    const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes:ImagePicker.MediaType.images, allowsEditing:true, aspect:[1,1], quality:0.85 });
-    if (!r.canceled && r.assets[0]) doUpload(r.assets[0].uri);
-  };
-  const pickCam = async () => {
-    const { granted } = await ImagePicker.requestCameraPermissionsAsync();
-    if (!granted) return;
-    const r = await ImagePicker.launchCameraAsync({ allowsEditing:true, aspect:[1,1], quality:0.85 });
-    if (!r.canceled && r.assets[0]) doUpload(r.assets[0].uri);
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.85,
+    });
+    if (!result.canceled && result.assets[0]) uploadAvatar(result.assets[0].uri);
   };
 
-  const handlePublish = async () => {
+  const pickFromCamera = async () => {
+    const { granted } = await ImagePicker.requestCameraPermissionsAsync();
+    if (!granted) return;
+    const result = await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.85 });
+    if (!result.canceled && result.assets[0]) uploadAvatar(result.assets[0].uri);
+  };
+
+  const saveProfile = async () => {
+    try {
+      await updateProfile({
+        full_name: fullName.trim() || null,
+        username: username.trim() || null,
+        bio: bio.trim() || null,
+        filiere: filiere.trim() || null,
+      });
+      setEditVisible(false);
+    } catch (e: any) {
+      Alert.alert("Erreur", e?.message || "Impossible d'enregistrer le profil.");
+    }
+  };
+
+  const publishPost = async () => {
     if (!postContent.trim()) return;
     setPosting(true);
     try {
-      await createPost({ title:postTitle.trim()||undefined, content:postContent.trim(), filiere:profile?.filiere||"Général" } as any);
-      await refresh(profile?.filiere||undefined);
-      setPostVisible(false); setPostTitle(""); setPostContent(""); setPostImage(null); setPostFile(null);
-      Alert.alert("Publié ✅", "Ta publication est visible dans le fil d'actu.");
-    } catch (e:any) { Alert.alert("Erreur", e?.message||"Impossible de publier."); }
-    finally { setPosting(false); }
+      await createPost({
+        title: postTitle.trim() || undefined,
+        content: postContent.trim(),
+        filiere: profile?.filiere || "General",
+      } as any);
+      await refresh(profile?.filiere || undefined);
+      setPostTitle("");
+      setPostContent("");
+      setPostVisible(false);
+    } catch (e: any) {
+      Alert.alert("Erreur", e?.message || "Impossible de publier.");
+    } finally {
+      setPosting(false);
+    }
   };
-
-  const pickPostImage = async () => {
-    const { granted } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!granted) return;
-    const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaType.images, allowsEditing: true, quality: 0.85 });
-    if (!r.canceled && r.assets[0]) { setPostImage(r.assets[0].uri); setPostFile(null); }
-  };
-
-  const pickPostVideo = async () => {
-    const { granted } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!granted) return;
-    const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaType.videos });
-    if (!r.canceled && r.assets[0]) { setPostFile({ name: r.assets[0].fileName || "video.mp4", uri: r.assets[0].uri, type: "video" }); setPostImage(null); }
-  };
-
-  const pickPostFile = async () => {
-    try {
-      const r = await DocumentPicker.getDocumentAsync({ type: "*/*", copyToCacheDirectory: true });
-      if (r.canceled) return;
-      const asset = r.assets[0];
-      setPostFile({ name: asset.name, uri: asset.uri, type: "file" }); setPostImage(null);
-    } catch {}
-  };
-
-  const avatarUri  = localAvatar || profile?.avatar_url || null;
-  const displayName= profile?.full_name || user?.email?.split("@")[0] || "Utilisateur";
-  const handle     = profile?.username  || user?.email?.split("@")[0] || "bloc";
 
   return (
-    <View style={{ flex:1, backgroundColor:c.background }}>
-
-      {/* Compact sticky header */}
-      <Animated.View style={{ position:"absolute", top:0, left:0, right:0, zIndex:10, opacity:headerOpacity, backgroundColor:c.background, paddingTop:insets.top, paddingHorizontal:16, paddingBottom:10, borderBottomWidth:1, borderBottomColor:c.border, flexDirection:"row", alignItems:"center", justifyContent:"space-between" }}>
-        <Text style={{ color:c.textPrimary, fontSize:18, fontWeight:"800" }}>{displayName}</Text>
-        <View style={{ flexDirection:"row", gap:8 }}>
-          <Pressable onPress={() => setPostVisible(true)} style={{ width:34,height:34,borderRadius:17,backgroundColor:c.accentPurple,alignItems:"center",justifyContent:"center" }}>
-            <Ionicons name="add" size={18} color="#FFF" />
-          </Pressable>
-          <Pressable onPress={() => router.push("/settings")} style={{ width:34,height:34,borderRadius:17,backgroundColor:c.cardAlt,alignItems:"center",justifyContent:"center" }}>
-            <Ionicons name="settings-outline" size={16} color={c.textPrimary} />
-          </Pressable>
-        </View>
-      </Animated.View>
-
-      <Animated.ScrollView
-        showsVerticalScrollIndicator={false}
-        onScroll={Animated.event([{nativeEvent:{contentOffset:{y:scrollY}}}], {useNativeDriver:false})}
-        scrollEventThrottle={16}
-        contentContainerStyle={{ paddingBottom:120 }}
-      >
-        {/* Bannière */}
-        <LinearGradient colors={isDark ? ["#111111","#000000"] : ["#F0F0F0","#FFFFFF"]} style={{ height:150 }}>
-          <View style={{ position:"absolute", top:insets.top+10, right:12, flexDirection:"row", gap:8 }}>
-            <Pressable onPress={() => setPostVisible(true)} style={{ height:32, borderRadius:999, paddingHorizontal:14, backgroundColor:"rgba(0,0,0,0.30)", flexDirection:"row", alignItems:"center", gap:6 }}>
-              <Ionicons name="add-circle-outline" size={15} color="#FFF" />
-              <Text style={{ color:"#FFF", fontWeight:"700", fontSize:13 }}>Publier</Text>
+    <View style={{ flex: 1, backgroundColor: c.background }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
+        <LinearGradient colors={["#15151D", "#08080C"]} style={[styles.cover, { paddingTop: insets.top + 14 }]}>
+          <View style={styles.coverActions}>
+            <Pressable style={styles.coverAction} onPress={() => setPostVisible(true)}>
+              <Ionicons name="add-circle-outline" size={16} color="#FFFFFF" />
             </Pressable>
-            <Pressable onPress={() => router.push("/settings")} style={{ width:32,height:32,borderRadius:16,backgroundColor:"rgba(0,0,0,0.30)",alignItems:"center",justifyContent:"center" }}>
-              <Ionicons name="settings-outline" size={15} color="#FFF" />
+            <Pressable style={styles.coverAction} onPress={() => router.push("/settings")}>
+              <Ionicons name="settings-outline" size={16} color="#FFFFFF" />
             </Pressable>
           </View>
         </LinearGradient>
 
-        {/* Avatar + actions */}
-        <View style={{ paddingHorizontal:16 }}>
-          <View style={{ flexDirection:"row", justifyContent:"space-between", alignItems:"flex-end", marginTop:-44 }}>
-            <Pressable onPress={handlePhoto} style={{ position:"relative" }}>
-              <View style={{ width:88,height:88,borderRadius:44,overflow:"hidden",borderWidth:4,borderColor:c.background,backgroundColor:c.cardAlt,alignItems:"center",justifyContent:"center" }}>
-                {avatarUri
-                  ? <Image source={{uri:avatarUri}} style={{width:84,height:84,borderRadius:42}} resizeMode="cover" />
-                  : <Text style={{color:c.textPrimary,fontSize:28,fontWeight:"800"}}>{displayName.slice(0,2).toUpperCase()}</Text>
-                }
-                {uploading && (
-                  <View style={{ position:"absolute",top:0,left:0,right:0,bottom:0,backgroundColor:"rgba(0,0,0,0.5)",alignItems:"center",justifyContent:"center" }}>
-                    <ActivityIndicator color="#FFF" size="small" />
-                  </View>
+        <View style={{ paddingHorizontal: 16 }}>
+          <View style={styles.avatarRow}>
+            <Pressable
+              onPress={() =>
+                Alert.alert("Photo de profil", "", [
+                  { text: "Galerie", onPress: pickFromLibrary },
+                  { text: "Camera", onPress: pickFromCamera },
+                  { text: "Annuler", style: "cancel" },
+                ])
+              }
+            >
+              <View style={[styles.avatarWrap, { borderColor: c.background }]}>
+                {avatarUri ? (
+                  <Image source={{ uri: avatarUri }} style={styles.avatarImage} resizeMode="cover" />
+                ) : (
+                  <Text style={styles.avatarFallback}>{displayName.slice(0, 2).toUpperCase()}</Text>
                 )}
-              </View>
-              <View style={{ position:"absolute",right:0,bottom:0,width:26,height:26,borderRadius:13,backgroundColor:c.accentPurple,alignItems:"center",justifyContent:"center",borderWidth:2,borderColor:c.background }}>
-                <Ionicons name="camera" size={11} color="#FFF" />
+                {uploading ? (
+                  <View style={styles.avatarLoading}>
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  </View>
+                ) : null}
               </View>
             </Pressable>
-            <View style={{ flexDirection:"row", gap:8, marginBottom:4 }}>
-              <Pressable onPress={() => setEditVisible(true)} style={{ height:36, paddingHorizontal:16, borderRadius:999, borderWidth:1.5, borderColor:c.border, alignItems:"center", justifyContent:"center" }}>
-                <Text style={{ color:c.textPrimary, fontWeight:"700", fontSize:13 }}>Modifier</Text>
+            <View style={styles.avatarRight}>
+              <View style={styles.levelBadge}>
+                <Text style={styles.levelBadgeText}>{profile?.niveau || "Niveau 1"}</Text>
+              </View>
+              <Pressable onPress={() => setEditVisible(true)} style={[styles.outlineBtn, { borderColor: c.border }]}>
+                <Text style={{ color: c.textPrimary, fontWeight: "700", fontSize: 13 }}>Modifier</Text>
               </Pressable>
             </View>
           </View>
 
-          {/* Infos */}
-          <View style={{ marginTop:12, gap:4 }}>
-            <Text style={{ color:c.textPrimary, fontSize:22, fontWeight:"800" }}>{displayName}</Text>
-            <Text style={{ color:c.textSecondary, fontSize:14 }}>@{handle}</Text>
-            {profile?.bio && <Text style={{ color:c.textPrimary, marginTop:6, lineHeight:20 }}>{profile.bio}</Text>}
-            <View style={{ flexDirection:"row", flexWrap:"wrap", gap:10, marginTop:8 }}>
-              {profile?.filiere && <View style={{ flexDirection:"row", alignItems:"center", gap:4 }}><Ionicons name="school-outline" size={13} color={c.textSecondary} /><Text style={{ color:c.textSecondary, fontSize:13 }}>{profile.filiere}</Text></View>}
-              {profile?.niveau  && <View style={{ flexDirection:"row", alignItems:"center", gap:4 }}><Ionicons name="ribbon-outline" size={13} color={c.textSecondary} /><Text style={{ color:c.textSecondary, fontSize:13 }}>{profile.niveau}</Text></View>}
-              <View style={{ flexDirection:"row", alignItems:"center", gap:4 }}><Ionicons name="calendar-outline" size={13} color={c.textSecondary} /><Text style={{ color:c.textSecondary, fontSize:13 }}>Membre 2025</Text></View>
-            </View>
-            {/* Stats */}
-            <View style={{ flexDirection:"row", gap:18, marginTop:12 }}>
-              <Pressable style={{ flexDirection:"row", gap:4 }}><Text style={{ color:c.textPrimary, fontWeight:"800", fontSize:15 }}>{myPosts.length}</Text><Text style={{ color:c.textSecondary, fontSize:14 }}>Posts</Text></Pressable>
-              <Pressable style={{ flexDirection:"row", gap:4 }}><Text style={{ color:c.textPrimary, fontWeight:"800", fontSize:15 }}>9</Text><Text style={{ color:c.textSecondary, fontSize:14 }}>Abonnements</Text></Pressable>
-              <Pressable style={{ flexDirection:"row", gap:4 }}><Text style={{ color:c.textPrimary, fontWeight:"800", fontSize:15 }}>11</Text><Text style={{ color:c.textSecondary, fontSize:14 }}>Abonnés</Text></Pressable>
+          <View style={styles.identity}>
+            <Text style={styles.displayName}>{displayName}</Text>
+            <Text style={styles.handle}>@{handle}</Text>
+            <Text style={styles.role}>{role}</Text>
+            <Text style={styles.bio} numberOfLines={2}>
+              {profile?.bio || "Ajoute une bio pour presenter ton profil et tes objectifs."}
+            </Text>
+            <View style={styles.metaRow}>
+              {profile?.filiere ? (
+                <View style={styles.metaItem}>
+                  <Ionicons name="school-outline" size={13} color={c.textSecondary} />
+                  <Text style={styles.metaText}>{profile.filiere}</Text>
+                </View>
+              ) : null}
+              {school ? (
+                <View style={styles.metaItem}>
+                  <Ionicons name="business-outline" size={13} color={c.textSecondary} />
+                  <Text style={styles.metaText}>{school}</Text>
+                </View>
+              ) : null}
             </View>
           </View>
+
         </View>
 
-        {/* Onglets style Twitter */}
-        <View style={{ borderTopWidth:1, borderTopColor:c.border, marginTop:16, flexDirection:"row" }}>
-          {TABS.map(t => (
-            <Pressable key={t.key} onPress={() => setTab(t.key)} style={{ flex:1, paddingVertical:14, alignItems:"center", borderBottomWidth:2, borderBottomColor:tab===t.key?c.accentPurple:"transparent" }}>
-              <Text style={{ color:tab===t.key?c.accentPurple:c.textSecondary, fontWeight:"700", fontSize:14 }}>{t.label}</Text>
-            </Pressable>
-          ))}
-        </View>
-
-        {/* Contenu onglet */}
-        {tab === "posts" && (
-          myPosts.length > 0 ? (
-            myPosts.map(p => (
-              <PostCard key={p.id} post={p}
-                onToggleLike={async id => { try { await toggleLike(id); } catch {} }}
-                onToggleSave={async id => { try { await toggleSave(id); } catch {} }}
-                onPressComments={async post => { await openComments(post.id).catch(()=>null); }}
-                onPressContent={post => router.push(`/content/${post.id}` as any)}
-                onPressMore={() => {}}
-              />
-            ))
-          ) : (
-            <View style={{ alignItems:"center", paddingVertical:40, gap:12 }}>
-              <Ionicons name="create-outline" size={40} color={c.textSecondary} />
-              <Text style={{ color:c.textPrimary, fontWeight:"700", fontSize:16 }}>Aucun post</Text>
-              <Text style={{ color:c.textSecondary, textAlign:"center" }}>Partage ta première publication.</Text>
-              <Pressable onPress={() => setPostVisible(true)} style={{ height:40, borderRadius:999, backgroundColor:c.accentPurple, paddingHorizontal:20, alignItems:"center", justifyContent:"center" }}>
-                <Text style={{ color:"#FFF", fontWeight:"800" }}>Publier maintenant</Text>
+        <View style={[styles.tabsRow, { borderTopColor: c.border, borderBottomColor: c.border }]}>
+          {TABS.map((item) => {
+            const active = tab === item.key;
+            return (
+              <Pressable
+                key={item.key}
+                onPress={() => setTab(item.key)}
+                style={[styles.tabItem, active && styles.tabItemActive]}
+              >
+                <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>{item.label}</Text>
               </Pressable>
+            );
+          })}
+        </View>
+
+        <View style={{ paddingTop: 8 }}>
+          {tab === "posts" ? (
+            myPosts.length ? (
+              myPosts.map((post) => (
+                <PostCard
+                  key={post.id}
+                  post={post}
+                  onToggleLike={async (id) => {
+                    try {
+                      await toggleLike(id);
+                    } catch {}
+                  }}
+                  onToggleSave={async (id) => {
+                    try {
+                      await toggleSave(id);
+                    } catch {}
+                  }}
+                  onPressComments={async (p) => {
+                    await openComments(p.id).catch(() => null);
+                  }}
+                  onPressContent={(p) => router.push(`/content/${p.id}` as any)}
+                  onPressMore={(p) =>
+                    Alert.alert("Publication", "Actions disponibles", [
+                      { text: "Voir le contenu", onPress: () => router.push(`/content/${p.id}` as any) },
+                      { text: "Fermer", style: "cancel" },
+                    ])
+                  }
+                />
+              ))
+            ) : (
+              <View style={styles.emptyWrap}>
+                <Ionicons name="newspaper-outline" size={38} color={c.textSecondary} />
+                <Text style={styles.emptyTitle}>Aucun post pour le moment</Text>
+                <Text style={styles.emptySub}>Publie ton premier contenu depuis ton profil.</Text>
+                <Pressable style={styles.primaryBtn} onPress={() => setPostVisible(true)}>
+                  <Text style={styles.primaryBtnText}>Publier maintenant</Text>
+                </Pressable>
+              </View>
+            )
+          ) : null}
+
+          {tab === "modules" ? (
+            <View style={styles.cardList}>
+              {MODULES.map((m) => (
+                <View key={m.id} style={[styles.simpleCard, { backgroundColor: c.card, borderColor: c.border }]}>
+                  <Text style={styles.simpleTitle}>{m.name}</Text>
+                  <Text style={styles.simpleSub}>{m.progress}% complete</Text>
+                  <View style={[styles.progressTrack, { backgroundColor: c.cardAlt }]}>
+                    <View style={[styles.progressFill, { width: `${m.progress}%` }]} />
+                  </View>
+                </View>
+              ))}
             </View>
-          )
-        )}
-        {tab !== "posts" && (
-          <View style={{ alignItems:"center", paddingVertical:40, gap:8 }}>
-            <Ionicons name={tab==="contenus"?"folder-outline":"people-outline"} size={38} color={c.textSecondary} />
-            <Text style={{ color:c.textSecondary, fontSize:15 }}>{tab==="contenus"?"Aucun contenu sauvegardé":"Aucun groupe rejoint"}</Text>
-          </View>
-        )}
+          ) : null}
 
-        {/* Déconnexion */}
-        <Pressable onPress={async () => { await signOut(); router.replace("/(auth)/login"); }}
-          style={({ pressed }) => [{ flexDirection:"row", alignItems:"center", justifyContent:"center", gap:8, marginHorizontal:16, marginTop:24, height:44, borderRadius:14, borderWidth:1, borderColor:"rgba(255,59,48,0.25)", backgroundColor:"rgba(255,59,48,0.06)" }, pressed && { opacity:0.7 }]}>
-          <Ionicons name="log-out-outline" size={16} color="#FF3B30" />
-          <Text style={{ color:"#FF3B30", fontWeight:"700" }}>Se déconnecter</Text>
-        </Pressable>
-      </Animated.ScrollView>
+          {tab === "projects" ? (
+            <View style={styles.cardList}>
+              {PROJECTS.map((p) => {
+                const value = Math.round((p.done / p.tasks) * 100);
+                return (
+                  <View key={p.id} style={[styles.simpleCard, { backgroundColor: c.card, borderColor: c.border }]}>
+                    <Text style={styles.simpleTitle}>{p.title}</Text>
+                    <Text style={styles.simpleSub}>{p.done}/{p.tasks} taches terminees</Text>
+                    <View style={[styles.progressTrack, { backgroundColor: c.cardAlt }]}>
+                      <View style={[styles.progressFill, { width: `${value}%` }]} />
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          ) : null}
 
-      {/* Modal publier depuis profil */}
+          {tab === "badges" ? (
+            <View style={styles.cardList}>
+              {BADGES.map((b) => (
+                <View key={b.id} style={[styles.simpleCard, { backgroundColor: c.card, borderColor: c.border }]}>
+                  <Text style={styles.simpleTitle}>{b.name}</Text>
+                  <Text style={styles.simpleSub}>{b.unlocked ? "Debloque" : "A debloquer"}</Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
+        </View>
+      </ScrollView>
+
       <Modal visible={postVisible} transparent animationType="slide" onRequestClose={() => setPostVisible(false)}>
-        <View style={{ flex:1, justifyContent:"flex-end", backgroundColor:"rgba(0,0,0,0.65)" }}>
-          <Pressable style={{ position:"absolute",top:0,left:0,right:0,bottom:0 }} onPress={() => setPostVisible(false)} />
-          <View style={{ backgroundColor:c.card, borderTopLeftRadius:28, borderTopRightRadius:28, borderWidth:1, borderColor:c.border, padding:20, paddingBottom:insets.bottom+20 }}>
-            {/* Header modal */}
-            <View style={{ flexDirection:"row", alignItems:"center", justifyContent:"space-between", marginBottom:16 }}>
+        <View style={styles.modalBackdrop}>
+          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setPostVisible(false)} />
+          <View style={[styles.modalCard, { backgroundColor: c.card, borderColor: c.border }]}>
+            <View style={styles.modalHead}>
+              <Text style={styles.modalTitle}>Nouvelle publication</Text>
               <Pressable onPress={() => setPostVisible(false)}>
                 <Ionicons name="close" size={22} color={c.textSecondary} />
               </Pressable>
-              <Text style={{ color:c.textPrimary, fontSize:18, fontWeight:"800" }}>Nouvelle publication</Text>
-              <Pressable onPress={handlePublish} disabled={posting||!postContent.trim()}
-                style={{ paddingHorizontal:14, paddingVertical:7, borderRadius:999, backgroundColor:c.accentPurple, opacity: posting||!postContent.trim()?0.5:1 }}>
-                {posting ? <ActivityIndicator color="#FFF" size="small" /> : <Text style={{ color:"#FFF", fontWeight:"800", fontSize:13 }}>Publier</Text>}
-              </Pressable>
             </View>
-
-            {/* Avatar + auteur */}
-            <View style={{ flexDirection:"row", alignItems:"center", gap:10, marginBottom:14 }}>
-              <View style={{ width:40, height:40, borderRadius:20, backgroundColor:c.cardAlt, alignItems:"center", justifyContent:"center", overflow:"hidden" }}>
-                {avatarUri
-                  ? <Image source={{ uri:avatarUri }} style={{ width:40, height:40 }} />
-                  : <Text style={{ color:c.textPrimary, fontWeight:"800" }}>{displayName.slice(0,2).toUpperCase()}</Text>
-                }
-              </View>
-              <View>
-                <Text style={{ color:c.textPrimary, fontWeight:"700" }}>{displayName}</Text>
-                {profile?.bio ? <Text style={{ color:c.textSecondary, fontSize:12 }} numberOfLines={1}>{profile.bio}</Text> : null}
-              </View>
-            </View>
-
-            {/* Titre */}
-            <TextInput value={postTitle} onChangeText={setPostTitle} placeholder="Titre (optionnel)" placeholderTextColor={c.textSecondary}
-              style={{ backgroundColor:c.cardAlt, borderRadius:12, borderWidth:1, borderColor:c.border, paddingHorizontal:14, paddingVertical:10, color:c.textPrimary, fontSize:15, marginBottom:10 }} />
-
-            {/* Contenu */}
-            <TextInput value={postContent} onChangeText={setPostContent} placeholder="Exprime-toi…" placeholderTextColor={c.textSecondary}
-              style={{ backgroundColor:c.cardAlt, borderRadius:12, borderWidth:1, borderColor:c.border, paddingHorizontal:14, paddingVertical:12, color:c.textPrimary, fontSize:15, minHeight:90, textAlignVertical:"top", marginBottom:12 }} multiline />
-
-            {/* Aperçu image */}
-            {postImage && (
-              <View style={{ position:"relative", marginBottom:12 }}>
-                <Image source={{ uri:postImage }} style={{ width:"100%", height:160, borderRadius:12 }} resizeMode="cover" />
-                <Pressable onPress={() => setPostImage(null)}
-                  style={{ position:"absolute", top:8, right:8, width:28, height:28, borderRadius:14, backgroundColor:"rgba(0,0,0,0.6)", alignItems:"center", justifyContent:"center" }}>
-                  <Ionicons name="close" size={16} color="#fff" />
-                </Pressable>
-              </View>
-            )}
-
-            {/* Aperçu fichier/vidéo */}
-            {postFile && (
-              <View style={{ flexDirection:"row", alignItems:"center", gap:10, backgroundColor:c.cardAlt, borderRadius:12, borderWidth:1, borderColor:c.border, padding:12, marginBottom:12 }}>
-                <View style={{ width:40, height:40, borderRadius:10, backgroundColor: postFile.type==="video" ? "#FF3B30"+"22" : "#007AFF"+"22", alignItems:"center", justifyContent:"center" }}>
-                  <Ionicons name={postFile.type==="video" ? "videocam" : "document"} size={20} color={postFile.type==="video" ? "#FF3B30" : "#007AFF"} />
-                </View>
-                <Text style={{ color:c.textPrimary, fontWeight:"600", flex:1, fontSize:13 }} numberOfLines={1}>{postFile.name}</Text>
-                <Pressable onPress={() => setPostFile(null)}>
-                  <Ionicons name="close-circle" size={20} color={c.textSecondary} />
-                </Pressable>
-              </View>
-            )}
-
-            {/* Actions bas */}
-            <View style={{ flexDirection:"row", alignItems:"center", gap:8, flexWrap:"wrap" }}>
-              <Pressable onPress={pickPostImage}
-                style={{ flexDirection:"row", alignItems:"center", gap:5, paddingHorizontal:12, paddingVertical:8, borderRadius:10, backgroundColor:c.cardAlt, borderWidth:1, borderColor:c.border }}>
-                <Ionicons name="image-outline" size={16} color={c.accentPurple} />
-                <Text style={{ color:c.accentPurple, fontWeight:"700", fontSize:12 }}>Photo</Text>
-              </Pressable>
-              <Pressable onPress={pickPostVideo}
-                style={{ flexDirection:"row", alignItems:"center", gap:5, paddingHorizontal:12, paddingVertical:8, borderRadius:10, backgroundColor:c.cardAlt, borderWidth:1, borderColor:c.border }}>
-                <Ionicons name="videocam-outline" size={16} color="#FF3B30" />
-                <Text style={{ color:"#FF3B30", fontWeight:"700", fontSize:12 }}>Vidéo</Text>
-              </Pressable>
-              <Pressable onPress={pickPostFile}
-                style={{ flexDirection:"row", alignItems:"center", gap:5, paddingHorizontal:12, paddingVertical:8, borderRadius:10, backgroundColor:c.cardAlt, borderWidth:1, borderColor:c.border }}>
-                <Ionicons name="attach-outline" size={16} color="#007AFF" />
-                <Text style={{ color:"#007AFF", fontWeight:"700", fontSize:12 }}>Fichier</Text>
-              </Pressable>
-              <Text style={{ color:c.textSecondary, fontSize:12, flex:1, textAlign:"right" }}>
-                {postContent.length > 0 ? `${postContent.length} car.` : ""}
-              </Text>
-            </View>
+            <TextInput
+              value={postTitle}
+              onChangeText={setPostTitle}
+              placeholder="Titre (optionnel)"
+              placeholderTextColor={c.textSecondary}
+              style={[styles.input, { borderColor: c.border, backgroundColor: c.cardAlt, color: c.textPrimary }]}
+            />
+            <TextInput
+              value={postContent}
+              onChangeText={setPostContent}
+              multiline
+              placeholder="Exprime-toi..."
+              placeholderTextColor={c.textSecondary}
+              style={[styles.inputArea, { borderColor: c.border, backgroundColor: c.cardAlt, color: c.textPrimary }]}
+            />
+            <Pressable onPress={publishPost} disabled={posting || !postContent.trim()} style={[styles.primaryBtn, (posting || !postContent.trim()) && { opacity: 0.55 }]}>
+              {posting ? <ActivityIndicator size="small" color="#FFF" /> : <Text style={styles.primaryBtnText}>Publier</Text>}
+            </Pressable>
           </View>
         </View>
       </Modal>
 
-      {/* Modal modifier profil */}
       <Modal visible={editVisible} transparent animationType="fade" onRequestClose={() => setEditVisible(false)}>
-        <View style={{ flex:1, justifyContent:"center", alignItems:"center" }}>
-          <Pressable style={{ position:"absolute",top:0,left:0,right:0,bottom:0,backgroundColor:"rgba(0,0,0,0.65)" }} onPress={() => setEditVisible(false)} />
-          <View style={{ width:"92%", backgroundColor:c.card, borderWidth:1, borderColor:c.border, borderRadius:20, padding:20, gap:12 }}>
-            <Text style={{ color:c.textPrimary, fontSize:18, fontWeight:"800" }}>Modifier le profil</Text>
-            {[
-              { label:"Nom complet",        value:fullName,  setter:setFullName,  ph:"Ton nom"             },
-              { label:"Nom d'utilisateur",  value:username,  setter:setUsername,  ph:"@username"           },
-              { label:"Bio",                value:bio,       setter:setBio,       ph:"Décris-toi…", multi:true },
-            ].map(({ label, value, setter, ph, multi }) => (
-              <View key={label} style={{ gap:5 }}>
-                <Text style={{ color:c.textSecondary, fontSize:11, fontWeight:"700", textTransform:"uppercase", letterSpacing:0.5 }}>{label}</Text>
-                <TextInput value={value} onChangeText={setter} placeholder={ph} placeholderTextColor={c.textSecondary}
-                  style={{ borderRadius:12, borderWidth:1, borderColor:c.border, backgroundColor:c.cardAlt, color:c.textPrimary, paddingHorizontal:14, paddingVertical:10, fontSize:15, ...(multi?{minHeight:78,textAlignVertical:"top"}:{}) }}
-                  multiline={!!multi} />
-              </View>
-            ))}
-            <View style={{ flexDirection:"row", gap:10, marginTop:4 }}>
-              <Pressable onPress={() => setEditVisible(false)} style={{ flex:1, height:44, borderRadius:14, borderWidth:1, borderColor:c.border, alignItems:"center", justifyContent:"center" }}>
-                <Text style={{ color:c.textPrimary, fontWeight:"700" }}>Annuler</Text>
+        <View style={styles.modalBackdrop}>
+          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setEditVisible(false)} />
+          <View style={[styles.modalCard, { backgroundColor: c.card, borderColor: c.border }]}>
+            <Text style={styles.modalTitle}>Modifier le profil</Text>
+            <TextInput value={fullName} onChangeText={setFullName} placeholder="Nom" placeholderTextColor={c.textSecondary} style={[styles.input, { borderColor: c.border, backgroundColor: c.cardAlt, color: c.textPrimary }]} />
+            <TextInput value={username} onChangeText={setUsername} placeholder="@username" placeholderTextColor={c.textSecondary} style={[styles.input, { borderColor: c.border, backgroundColor: c.cardAlt, color: c.textPrimary }]} />
+            <TextInput value={filiere} onChangeText={setFiliere} placeholder="Filiere" placeholderTextColor={c.textSecondary} style={[styles.input, { borderColor: c.border, backgroundColor: c.cardAlt, color: c.textPrimary }]} />
+            <TextInput value={bio} onChangeText={setBio} multiline placeholder="Bio" placeholderTextColor={c.textSecondary} style={[styles.inputArea, { borderColor: c.border, backgroundColor: c.cardAlt, color: c.textPrimary }]} />
+            <View style={styles.modalActions}>
+              <Pressable onPress={() => setEditVisible(false)} style={[styles.outlineBtn, { borderColor: c.border }]}>
+                <Text style={{ color: c.textPrimary, fontWeight: "700" }}>Annuler</Text>
               </Pressable>
-              <Pressable onPress={async () => { await updateProfile({full_name:fullName,username,bio}); setEditVisible(false); }} style={{ flex:1, height:44, borderRadius:14, backgroundColor:c.accentPurple, alignItems:"center", justifyContent:"center" }}>
-                <Text style={{ color:"#FFF", fontWeight:"800" }}>Enregistrer</Text>
+              <Pressable onPress={saveProfile} style={styles.primaryBtn}>
+                <Text style={styles.primaryBtnText}>Enregistrer</Text>
               </Pressable>
             </View>
           </View>
@@ -360,3 +406,259 @@ export default function ProfileTabRoute() {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  cover: {
+    height: 210,
+    paddingHorizontal: 16,
+    justifyContent: "flex-start",
+  },
+  coverActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 8,
+  },
+  coverAction: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "rgba(255,255,255,0.14)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarRow: {
+    marginTop: -56,
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+  },
+  avatarWrap: {
+    width: 124,
+    height: 124,
+    borderRadius: 62,
+    borderWidth: 4,
+    backgroundColor: "#1D1D22",
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarImage: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+  },
+  avatarFallback: {
+    color: "#FFFFFF",
+    fontSize: 32,
+    fontWeight: "800",
+  },
+  avatarLoading: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarRight: {
+    alignItems: "flex-end",
+    gap: 8,
+    paddingBottom: 8,
+  },
+  levelBadge: {
+    minHeight: 28,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    backgroundColor: "rgba(110,92,255,0.18)",
+    borderWidth: 1,
+    borderColor: "#6E5CFF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  levelBadgeText: {
+    color: "#D8D1FF",
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  outlineBtn: {
+    minHeight: 38,
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  identity: {
+    marginTop: 12,
+    gap: 4,
+  },
+  displayName: {
+    color: "#FFFFFF",
+    fontSize: 28,
+    fontWeight: "900",
+    letterSpacing: -0.6,
+  },
+  handle: {
+    color: "#9A9AA7",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  role: {
+    color: "#6E5CFF",
+    fontSize: 12,
+    fontWeight: "800",
+    marginTop: 4,
+  },
+  bio: {
+    color: "#E1E1EA",
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: 6,
+  },
+  metaRow: {
+    marginTop: 8,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+  },
+  metaItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  metaText: {
+    color: "#8A8A95",
+    fontSize: 13,
+  },
+  progressTrack: {
+    marginTop: 8,
+    width: "100%",
+    height: 8,
+    borderRadius: 999,
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: "100%",
+    borderRadius: 999,
+    backgroundColor: "#6E5CFF",
+  },
+  tabsRow: {
+    marginTop: 16,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+  },
+  tabItem: {
+    flex: 1,
+    minHeight: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    borderBottomWidth: 2,
+    borderBottomColor: "transparent",
+  },
+  tabItemActive: {
+    borderBottomColor: "#6E5CFF",
+  },
+  tabLabel: {
+    color: "#8F8F99",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  tabLabelActive: {
+    color: "#6E5CFF",
+  },
+  emptyWrap: {
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 38,
+  },
+  emptyTitle: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "800",
+  },
+  emptySub: {
+    color: "#9494A0",
+    fontSize: 13,
+    textAlign: "center",
+  },
+  primaryBtn: {
+    minHeight: 42,
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#6E5CFF",
+  },
+  primaryBtnText: {
+    color: "#FFFFFF",
+    fontWeight: "800",
+    fontSize: 13,
+  },
+  cardList: {
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    gap: 10,
+  },
+  simpleCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 12,
+  },
+  simpleTitle: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "800",
+  },
+  simpleSub: {
+    color: "#9B9BA6",
+    marginTop: 4,
+    fontSize: 12,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.62)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 16,
+  },
+  modalCard: {
+    width: "100%",
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: 16,
+    gap: 10,
+  },
+  modalHead: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  modalTitle: {
+    color: "#FFFFFF",
+    fontSize: 18,
+    fontWeight: "900",
+  },
+  input: {
+    minHeight: 42,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    fontSize: 14,
+  },
+  inputArea: {
+    minHeight: 100,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    textAlignVertical: "top",
+    fontSize: 14,
+  },
+  modalActions: {
+    marginTop: 6,
+    flexDirection: "row",
+    gap: 10,
+    justifyContent: "space-between",
+  },
+});

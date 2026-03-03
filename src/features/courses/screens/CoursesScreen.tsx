@@ -6,6 +6,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../../core/theme/ThemeProvider";
 import { getAllCourses } from "../coursesRepo";
 import { mockCourses, Course } from "../coursesData";
+import { useAuthStore } from "../../../../state/useAuthStore";
+import { fetchProgressionStatsFromSupabase } from "../../../../lib/services/progressionService";
 
 const SEMESTERS = ["Tous", "S1", "S2"];
 
@@ -13,10 +15,18 @@ export default function CoursesListScreen() {
   const router  = useRouter();
   const insets  = useSafeAreaInsets();
   const { c }   = useTheme();
+  const { user } = useAuthStore();
   const [courses,  setCourses]  = useState<Course[]>([]);
   const [sem,      setSem]      = useState("Tous");
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState<string|null>(null);
+  const [remoteProgress, setRemoteProgress] = useState<Partial<{
+    streak: number;
+    objectiveCurrent: number;
+    objectiveTarget: number;
+    modulesDone: number;
+    flashcardsCreated: number;
+  }> | null>(null);
 
   const load = async () => {
     setLoading(true); setError(null);
@@ -31,6 +41,53 @@ export default function CoursesListScreen() {
   useEffect(()=>{ load(); }, []);
 
   const filtered = useMemo(()=> sem === "Tous" ? courses : courses.filter(c=>c.semester===sem), [sem, courses]);
+  const allCourses = useMemo(() => courses, [courses]);
+  const modulesDone = useMemo(
+    () => allCourses.filter((course) => course.stats.progress >= 100).length,
+    [allCourses]
+  );
+  const avgProgress = useMemo(() => {
+    if (!allCourses.length) return 0;
+    const total = allCourses.reduce((sum, course) => sum + (course.stats.progress || 0), 0);
+    return Math.max(0, Math.min(100, Math.round(total / allCourses.length)));
+  }, [allCourses]);
+  const flashcardsCount = useMemo(
+    () => allCourses.reduce((sum, course) => sum + (course.stats.notesCount || 0), 0),
+    [allCourses]
+  );
+  const streakFallback = 9;
+  const objectiveTargetFallback = Math.max(10, allCourses.length * 3 || 10);
+  const objectiveCurrentFallback = Math.round((avgProgress / 100) * objectiveTargetFallback);
+
+  const streak = remoteProgress?.streak ?? streakFallback;
+  const modulesDoneValue = remoteProgress?.modulesDone ?? modulesDone;
+  const flashcardsCountValue = remoteProgress?.flashcardsCreated ?? flashcardsCount;
+  const objectiveCurrent = remoteProgress?.objectiveCurrent ?? objectiveCurrentFallback;
+  const objectiveTarget = Math.max(1, remoteProgress?.objectiveTarget ?? objectiveTargetFallback);
+  const objectivePercent = Math.max(5, Math.min(100, Math.round((objectiveCurrent / objectiveTarget) * 100)));
+
+  useEffect(() => {
+    const uid = user?.id;
+    if (!uid) {
+      setRemoteProgress(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    (async () => {
+      const stats = await fetchProgressionStatsFromSupabase(uid);
+      if (!cancelled) {
+        setRemoteProgress(stats ?? null);
+      }
+    })().catch(() => {
+      if (!cancelled) setRemoteProgress(null);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
 
   return (
     <View style={{ flex:1, backgroundColor:c.background, paddingTop:insets.top }}>
@@ -62,6 +119,34 @@ export default function CoursesListScreen() {
             <Text style={{ color: sem===s ? "#fff" : c.textSecondary, fontWeight:"700", fontSize:13 }}>{s}</Text>
           </Pressable>
         ))}
+      </View>
+
+      {/* Progression (deplacee depuis Profil) */}
+      <View style={{ paddingHorizontal: 16, paddingBottom: 10 }}>
+        <View style={[styles.progressCard, { backgroundColor: c.card, borderColor: c.border }]}>
+          <Text style={styles.sectionTitle}>Progression</Text>
+          <View style={styles.progressGrid}>
+            <View style={styles.progressItem}>
+              <Text style={styles.progressValue}>{streak}</Text>
+              <Text style={styles.progressLabel}>Streak</Text>
+            </View>
+            <View style={styles.progressItem}>
+              <Text style={styles.progressValue}>{modulesDoneValue}</Text>
+              <Text style={styles.progressLabel}>Modules termines</Text>
+            </View>
+            <View style={styles.progressItem}>
+              <Text style={styles.progressValue}>{flashcardsCountValue}</Text>
+              <Text style={styles.progressLabel}>Flashcards creees</Text>
+            </View>
+          </View>
+          <Text style={[styles.monthTitle, { color: c.textPrimary }]}>Objectif du mois</Text>
+          <Text style={[styles.monthSub, { color: c.textSecondary }]}>
+            {objectiveCurrent}/{objectiveTarget} objectifs valides ({objectivePercent}%)
+          </Text>
+          <View style={[styles.progressTrack, { backgroundColor: c.cardAlt }]}>
+            <View style={[styles.progressFill, { width: `${objectivePercent}%` }]} />
+          </View>
+        </View>
       </View>
 
       {/* Contenu */}
@@ -155,3 +240,60 @@ export default function CoursesListScreen() {
     </View>
   );
 }
+
+const styles = {
+  progressCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: 14,
+    shadowColor: "#000",
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 } as const,
+    elevation: 3,
+  },
+  sectionTitle: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "800" as const,
+    marginBottom: 10,
+  },
+  progressGrid: {
+    flexDirection: "row" as const,
+    justifyContent: "space-between" as const,
+  },
+  progressItem: {
+    alignItems: "flex-start" as const,
+    gap: 2,
+  },
+  progressValue: {
+    color: "#FFFFFF",
+    fontSize: 20,
+    fontWeight: "900" as const,
+  },
+  progressLabel: {
+    color: "#9A9AA6",
+    fontSize: 12,
+  },
+  monthTitle: {
+    marginTop: 14,
+    fontSize: 14,
+    fontWeight: "800" as const,
+  },
+  monthSub: {
+    marginTop: 3,
+    fontSize: 12,
+  },
+  progressTrack: {
+    marginTop: 8,
+    width: "100%" as const,
+    height: 8,
+    borderRadius: 999,
+    overflow: "hidden" as const,
+  },
+  progressFill: {
+    height: "100%" as const,
+    borderRadius: 999,
+    backgroundColor: "#6E5CFF",
+  },
+};

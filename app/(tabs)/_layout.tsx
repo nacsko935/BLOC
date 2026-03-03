@@ -1,6 +1,6 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Tabs, useRouter } from "expo-router";
-import { Platform, Pressable, Text, View } from "react-native";
+import { Image, Platform, Pressable, View } from "react-native";
 import { BlurView } from "expo-blur";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -11,6 +11,7 @@ export default function TabsLayout() {
   const router = useRouter();
   const { initAuth, loading, session } = useAuthStore();
   const { c, isDark } = useTheme();
+  const [logoError, setLogoError] = useState(false);
 
   useEffect(() => {
     initAuth().catch(() => router.replace("/(auth)/login"));
@@ -99,7 +100,16 @@ export default function TabsLayout() {
                   shadowOffset: { width: 0, height: 4 }, elevation: 10,
                 }}
               >
-                <Text style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "900", letterSpacing: 0.5 }}>BLOC</Text>
+                {!logoError ? (
+                  <Image
+                    source={require("../../assets/logo.png")}
+                    onError={() => setLogoError(true)}
+                    resizeMode="contain"
+                    style={{ width: 26, height: 26 }}
+                  />
+                ) : (
+                  <Ionicons name="add" size={26} color="#FFFFFF" />
+                )}
               </Pressable>
             ),
             tabBarLabelStyle: { display: "none" },

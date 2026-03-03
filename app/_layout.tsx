@@ -134,6 +134,7 @@ export default function RootLayout() {
                     <Stack.Screen name="course/[id]"  options={{ title: "Cours", headerShown: false }} />
                     <Stack.Screen name="content/[id]" options={{ headerShown: false }} />
                     <Stack.Screen name="trends/[id]"  options={{ headerShown: false }} />
+                    <Stack.Screen name="profile/[id]" options={{ headerShown: false }} />
                     <Stack.Screen name="messages/[id]"       options={{ headerShown: false }} />
                     <Stack.Screen name="messages/group/[id]" options={{ headerShown: false }} />
                   </Stack>

@@ -1,4 +1,3 @@
-import { useTheme } from "../../core/theme/ThemeProvider";
 import React from "react";
 import { View, Text, Pressable, StyleSheet, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
@@ -81,7 +80,8 @@ interface DashboardWidgetProps {
 }
 
 export default function DashboardWidget({
-  const { c } = useTheme(); onNavigate }: DashboardWidgetProps) {
+  onNavigate,
+}: DashboardWidgetProps) {
   const router = useRouter();
 
   const getPriorityColor = (priority: "high" | "medium" | "low") => {

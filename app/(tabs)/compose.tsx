@@ -1,4 +1,5 @@
-import CreatePageScreen from "../../src/features/create/screens/CreatePageScreen";
+import { Redirect } from "expo-router";
+
 export default function ComposeTabRoute() {
-  return <CreatePageScreen />;
+  return <Redirect href="/create/index" />;
 }

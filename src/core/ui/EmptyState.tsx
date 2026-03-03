@@ -1,4 +1,3 @@
-import { useTheme } from "../theme/ThemeProvider";
 import React, { useEffect, useRef } from "react";
 import { View, Text, Pressable, StyleSheet, Animated } from "react-native";
 import { theme } from "./theme";
@@ -192,7 +191,6 @@ const EmptyStateIcon = ({ name }: { name: EmptyStateProps["icon"] }) => {
 };
 
 export default function EmptyState({
-  const { c } = useTheme();
   icon,
   title,
   description,
