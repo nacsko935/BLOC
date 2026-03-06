@@ -88,6 +88,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
+  isFirstLogin: () => {
+    const profile = (get() as any).profile;
+    return profile?.is_first_login === true;
+  },
+
+  clearFirstLogin: async () => {
+    const { updateProfile } = get() as any;
+    await updateProfile({ is_first_login: false }).catch(() => null);
+  },
+
   signOut: async () => {
     const userId = get().user?.id;
     if (userId) {

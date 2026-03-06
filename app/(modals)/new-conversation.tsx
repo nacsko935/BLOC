@@ -37,6 +37,7 @@ export default function NewConversationModal() {
   const [loading, setLoading]   = useState(false);
   const [selected, setSelected] = useState<FoundUser | null>(null);
   const [creating, setCreating] = useState(false);
+  const [following, setFollowing] = useState<Record<string,boolean>>({});
 
   useEffect(() => {
     if (!query.trim()) { setResults([]); return; }
@@ -142,12 +143,26 @@ export default function NewConversationModal() {
               onPress={() => setSelected(isSel ? null : item)}
               style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 14, backgroundColor: isSel ? c.accentPurple + "18" : c.card, borderWidth: 1.5, borderColor: isSel ? c.accentPurple : c.border, borderRadius: 16, padding: 14 }, pressed && { opacity: 0.8 }]}
             >
-              <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: c.accentPurple + "25", alignItems: "center", justifyContent: "center" }}>
-                {item.avatar_url
-                  ? <Image source={{ uri: item.avatar_url }} style={{ width: 48, height: 48, borderRadius: 24 }} />
-                  : <Text style={{ color: c.accentPurple, fontWeight: "800", fontSize: 18 }}>{initials(item)}</Text>
-                }
-              </View>
+              <Pressable onPress={() => router.push({ pathname: "/profile/[id]", params: { id: item.id } } as any)}
+                style={{ position: "relative" }}>
+                <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: c.accentPurple + "25", alignItems: "center", justifyContent: "center" }}>
+                  {item.avatar_url
+                    ? <Image source={{ uri: item.avatar_url }} style={{ width: 48, height: 48, borderRadius: 24 }} />
+                    : <Text style={{ color: c.accentPurple, fontWeight: "800", fontSize: 18 }}>{initials(item)}</Text>
+                  }
+                </View>
+                <Pressable
+                  onPress={async (e) => {
+                    e.stopPropagation?.();
+                    const next = await toggleFollow(item.id).catch(() => !following[item.id]);
+                    setFollowing((prev: any) => ({ ...prev, [item.id]: next }));
+                  }}
+                  style={{ position:"absolute", bottom:-2, right:-2, width:18, height:18, borderRadius:9,
+                    backgroundColor: following[item.id] ? "#34C759" : "#7B6CFF",
+                    alignItems:"center", justifyContent:"center", borderWidth:2, borderColor: "#111" }}>
+                  <Ionicons name={following[item.id] ? "checkmark" : "add"} size={10} color="#fff" />
+                </Pressable>
+              </Pressable>
               <View style={{ flex: 1 }}>
                 <Text style={{ color: c.textPrimary, fontWeight: "700", fontSize: 15 }}>{displayName(item)}</Text>
                 <Text style={{ color: c.textSecondary, fontSize: 12, marginTop: 2 }}>

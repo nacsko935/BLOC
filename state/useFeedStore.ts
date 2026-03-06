@@ -7,6 +7,7 @@ import {
   fetchFeed,
   toggleLike,
   toggleSave,
+  toggleRepost,
 } from "../lib/services/postService";
 import { track } from "../lib/services/analyticsService";
 
@@ -24,6 +25,7 @@ type FeedState = {
   createPost: (input: { title?: string; content: string; filiere: string; type?: PostType }) => Promise<void>;
   toggleLike: (postId: string) => Promise<void>;
   toggleSave: (postId: string) => Promise<void>;
+  toggleRepost: (postId: string) => Promise<void>;
   openComments: (postId: string) => Promise<void>;
   addComment: (postId: string, content: string) => Promise<void>;
 };
@@ -122,6 +124,19 @@ export const useFeedStore = create<FeedState>((set, get) => ({
     } finally {
       savePending.delete(postId);
     }
+  },
+
+  toggleRepost: async (postId) => {
+    try {
+      const reposted = await toggleRepost(postId);
+      set((state) => ({
+        posts: state.posts.map((post) =>
+          post.id === postId
+            ? { ...post, repostedByMe: reposted, repostsCount: reposted ? (post.repostsCount ?? 0) + 1 : Math.max(0, (post.repostsCount ?? 0) - 1) }
+            : post
+        ),
+      }));
+    } catch {}
   },
 
   openComments: async (postId) => {

@@ -1,110 +1,141 @@
-import React, { useMemo, useState } from "react";
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
-import { useRouter, useLocalSearchParams } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
+import React, { useState } from "react";
+import {
+  ActivityIndicator, KeyboardAvoidingView, Platform, Pressable,
+  ScrollView, StyleSheet, Text, TextInput, View,
+} from "react-native";
+import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuthStore } from "../../state/useAuthStore";
 
 export default function LoginScreen() {
-  const router      = useRouter();
-  const { signIn }  = useAuthStore();
-  const { accountType } = useLocalSearchParams<{ accountType?: string }>();
-
-  const [email,    setEmail]    = useState("");
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { signIn } = useAuthStore();
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading,  setLoading]  = useState(false);
-  const [error,    setError]    = useState("");
-  const [showPwd,  setShowPwd]  = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [showPwd, setShowPwd] = useState(false);
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) { setError("Remplis tous les champs."); return; }
     setLoading(true); setError("");
     try {
       await signIn(email.trim().toLowerCase(), password);
-      router.replace("/(tabs)/home");
+      // Check AsyncStorage for first-login flag (set during register)
+      const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
+      const userKey = `bloc.welcomed.${email.trim().toLowerCase()}`;
+      const welcomed = await AsyncStorage.getItem(userKey).catch(() => "1");
+      if (!welcomed) {
+        await AsyncStorage.setItem(userKey, "1").catch(() => null);
+        router.replace("/welcome");
+      } else {
+        router.replace("/(tabs)/home");
+      }
     } catch (e: any) {
-      setError(e?.message || "Impossible de se connecter.");
+      setError(e?.message || "Email ou mot de passe incorrect.");
     } finally { setLoading(false); }
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#000000" }}>
-      <SafeAreaView style={{ flex: 1 }}>
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-          <ScrollView contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24 }} keyboardShouldPersistTaps="handled">
+    <View style={s.root}>
+      <LinearGradient colors={["#0D0820", "#060412", "#000000"]} style={StyleSheet.absoluteFillObject} />
+      <View style={s.orbTR} /><View style={s.orbBL} />
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+        <ScrollView contentContainerStyle={[s.scroll, { paddingTop: insets.top + 16 }]} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
-            {/* Back */}
-            <Pressable onPress={() => router.back()} style={({ pressed }) => [{ width: 40, height: 40, borderRadius: 20, backgroundColor: "#111111", alignItems: "center", justifyContent: "center", marginTop: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" }, pressed && { opacity: 0.7 }]}>
-              <Ionicons name="arrow-back" size={18} color="#fff" />
-            </Pressable>
+          <Pressable onPress={() => router.back()} style={s.backBtn}>
+            <Ionicons name="chevron-back" size={20} color="rgba(255,255,255,0.7)" />
+          </Pressable>
 
-            {/* Logo + titre */}
-            <View style={{ marginTop: 32, marginBottom: 36, gap: 8 }}>
-              <View style={{ width: 56, height: 56, borderRadius: 16, backgroundColor: "#5B4CFF", alignItems: "center", justifyContent: "center", marginBottom: 8 }}>
-                <Text style={{ color: "#FFF", fontSize: 20, fontWeight: "900", letterSpacing: 0.5 }}>BLOC</Text>
-              </View>
-              <Text style={{ color: "#fff", fontSize: 30, fontWeight: "800", letterSpacing: -0.5 }}>Connexion</Text>
-              <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 15 }}>Bon retour 👋</Text>
+          <View style={s.logoArea}>
+            <LinearGradient colors={["#8B7DFF", "#5040E0"]} style={s.logoBox}>
+              <Text style={s.logoLetter}>B</Text>
+            </LinearGradient>
+            <View style={s.logoGlow} />
+          </View>
+
+          <Text style={s.title}>Content de te revoir 👋</Text>
+          <Text style={s.subtitle}>Connecte-toi à ton espace BLOC</Text>
+
+          <View style={s.card}>
+            <View style={s.field}>
+              <View style={s.fieldIcon}><Ionicons name="mail-outline" size={17} color="#7B6CFF" /></View>
+              <TextInput value={email} onChangeText={setEmail} placeholder="Adresse email"
+                placeholderTextColor="rgba(255,255,255,0.28)" keyboardType="email-address"
+                autoCapitalize="none" autoCorrect={false} style={s.fieldInput} />
             </View>
 
-            {/* Champs */}
-            <View style={{ gap: 14 }}>
-              <View style={{ gap: 6 }}>
-                <Text style={{ color: "rgba(255,255,255,0.6)", fontSize: 12, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.5 }}>Email</Text>
-                <TextInput
-                  value={email} onChangeText={setEmail}
-                  placeholder="votre@email.com" placeholderTextColor="rgba(255,255,255,0.3)"
-                  keyboardType="email-address" autoCapitalize="none" autoCorrect={false}
-                  style={{ backgroundColor: "#111111", borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14, color: "#fff", fontSize: 15, borderWidth: 1, borderColor: "rgba(255,255,255,0.1)" }}
-                />
-              </View>
-
-              <View style={{ gap: 6 }}>
-                <Text style={{ color: "rgba(255,255,255,0.6)", fontSize: 12, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.5 }}>Mot de passe</Text>
-                <View style={{ position: "relative" }}>
-                  <TextInput
-                    value={password} onChangeText={setPassword}
-                    placeholder="••••••••" placeholderTextColor="rgba(255,255,255,0.3)"
-                    secureTextEntry={!showPwd} autoCapitalize="none"
-                    style={{ backgroundColor: "#111111", borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14, paddingRight: 48, color: "#fff", fontSize: 15, borderWidth: 1, borderColor: "rgba(255,255,255,0.1)" }}
-                  />
-                  <Pressable onPress={() => setShowPwd(!showPwd)} style={{ position: "absolute", right: 14, top: 14 }}>
-                    <Ionicons name={showPwd ? "eye-off-outline" : "eye-outline"} size={20} color="rgba(255,255,255,0.4)" />
-                  </Pressable>
-                </View>
-              </View>
-
-              {error ? (
-                <View style={{ backgroundColor: "rgba(255,59,48,0.12)", borderRadius: 10, padding: 12, borderWidth: 1, borderColor: "rgba(255,59,48,0.25)" }}>
-                  <Text style={{ color: "#FF6B6B", fontSize: 13, fontWeight: "600" }}>{error}</Text>
-                </View>
-              ) : null}
-
-              {/* Bouton connexion */}
-              <Pressable
-                onPress={handleLogin}
-                disabled={loading}
-                style={({ pressed }) => [{ borderRadius: 14, overflow: "hidden", marginTop: 6, opacity: loading ? 0.7 : pressed ? 0.9 : 1 }]}
-              >
-                <LinearGradient colors={["#7B6CFF", "#5B4CFF"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ height: 52, alignItems: "center", justifyContent: "center", borderRadius: 14 }}>
-                  {loading
-                    ? <ActivityIndicator color="#fff" />
-                    : <Text style={{ color: "#fff", fontWeight: "800", fontSize: 16 }}>Se connecter</Text>
-                  }
-                </LinearGradient>
+            <View style={s.field}>
+              <View style={s.fieldIcon}><Ionicons name="lock-closed-outline" size={17} color="#7B6CFF" /></View>
+              <TextInput value={password} onChangeText={setPassword} placeholder="Mot de passe"
+                placeholderTextColor="rgba(255,255,255,0.28)" secureTextEntry={!showPwd}
+                autoCapitalize="none" style={[s.fieldInput, { paddingRight: 48 }]} />
+              <Pressable onPress={() => setShowPwd(v => !v)} style={s.eyeBtn}>
+                <Ionicons name={showPwd ? "eye-off-outline" : "eye-outline"} size={18} color="rgba(255,255,255,0.35)" />
               </Pressable>
-
-              <View style={{ flexDirection: "row", justifyContent: "center", marginTop: 12, gap: 4 }}>
-                <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 14 }}>Pas encore de compte ?</Text>
-                <Pressable onPress={() => router.push({ pathname: "/(auth)/register", params: { accountType: accountType || "student" } })}>
-                  <Text style={{ color: "#7B6CFF", fontWeight: "800", fontSize: 14 }}>S'inscrire</Text>
-                </Pressable>
-              </View>
             </View>
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
+
+            {!!error && (
+              <View style={s.errorBox}>
+                <Ionicons name="alert-circle-outline" size={15} color="#FF6B6B" />
+                <Text style={s.errorText}>{error}</Text>
+              </View>
+            )}
+
+            <Pressable onPress={handleLogin} disabled={loading}>
+              <LinearGradient colors={loading ? ["#333","#222"] : ["#8B7DFF","#5040E0"]}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.submitBtn}>
+                {loading ? <ActivityIndicator color="#fff" /> : <>
+                  <Text style={s.submitText}>Se connecter</Text>
+                  <Ionicons name="arrow-forward" size={18} color="#fff" />
+                </>}
+              </LinearGradient>
+            </Pressable>
+          </View>
+
+          <View style={s.divider}>
+            <View style={s.divLine} /><Text style={s.divText}>ou</Text><View style={s.divLine} />
+          </View>
+
+          <Pressable onPress={() => router.push("/(auth)/register")} style={s.signupRow}>
+            <Text style={s.signupLabel}>Pas encore de compte ?</Text>
+            <Text style={s.signupLink}>S'inscrire</Text>
+            <Ionicons name="chevron-forward" size={14} color="#7B6CFF" />
+          </Pressable>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }
+
+const s = StyleSheet.create({
+  root: { flex: 1, backgroundColor: "#07071A" },
+  scroll: { paddingHorizontal: 24, paddingBottom: 60, flexGrow: 1 },
+  orbTR: { position:"absolute", top:-80, right:-80, width:280, height:280, borderRadius:140, backgroundColor:"#7B6CFF", opacity:0.11 },
+  orbBL: { position:"absolute", bottom:40, left:-100, width:240, height:240, borderRadius:120, backgroundColor:"#4B3BDF", opacity:0.09 },
+  backBtn: { width:40, height:40, borderRadius:20, backgroundColor:"rgba(255,255,255,0.06)", borderWidth:1, borderColor:"rgba(255,255,255,0.09)", alignItems:"center", justifyContent:"center" },
+  logoArea: { alignItems:"center", marginTop:36, marginBottom:30, position:"relative" },
+  logoBox: { width:76, height:76, borderRadius:24, alignItems:"center", justifyContent:"center", shadowColor:"#7B6CFF", shadowOpacity:0.55, shadowRadius:22, shadowOffset:{width:0,height:0}, elevation:12 },
+  logoLetter: { color:"#fff", fontSize:38, fontWeight:"900", letterSpacing:-1 },
+  logoGlow: { position:"absolute", width:110, height:110, borderRadius:55, backgroundColor:"#7B6CFF", opacity:0.14, zIndex:-1 },
+  title: { color:"#fff", fontSize:26, fontWeight:"800", letterSpacing:-0.5, textAlign:"center", marginBottom:6 },
+  subtitle: { color:"rgba(255,255,255,0.42)", fontSize:15, textAlign:"center", marginBottom:30 },
+  card: { backgroundColor:"rgba(255,255,255,0.04)", borderRadius:24, borderWidth:1, borderColor:"rgba(255,255,255,0.08)", padding:18, gap:12 },
+  field: { flexDirection:"row", alignItems:"center", backgroundColor:"rgba(255,255,255,0.05)", borderRadius:14, borderWidth:1, borderColor:"rgba(255,255,255,0.08)", minHeight:54, overflow:"hidden" },
+  fieldIcon: { width:48, alignItems:"center", justifyContent:"center", borderRightWidth:1, borderRightColor:"rgba(255,255,255,0.06)", alignSelf:"stretch" },
+  fieldInput: { flex:1, color:"#fff", fontSize:15, paddingHorizontal:14, paddingVertical:15 },
+  eyeBtn: { position:"absolute", right:12, width:34, height:34, alignItems:"center", justifyContent:"center" },
+  errorBox: { flexDirection:"row", alignItems:"center", gap:8, backgroundColor:"rgba(255,107,107,0.10)", borderRadius:12, padding:12, borderWidth:1, borderColor:"rgba(255,107,107,0.22)" },
+  errorText: { color:"#FF6B6B", fontSize:13, fontWeight:"600", flex:1 },
+  submitBtn: { height:54, borderRadius:16, flexDirection:"row", alignItems:"center", justifyContent:"center", gap:10 },
+  submitText: { color:"#fff", fontWeight:"800", fontSize:16, letterSpacing:0.2 },
+  divider: { flexDirection:"row", alignItems:"center", gap:12, marginVertical:24 },
+  divLine: { flex:1, height:1, backgroundColor:"rgba(255,255,255,0.08)" },
+  divText: { color:"rgba(255,255,255,0.28)", fontSize:13 },
+  signupRow: { flexDirection:"row", alignItems:"center", justifyContent:"center", gap:6 },
+  signupLabel: { color:"rgba(255,255,255,0.42)", fontSize:14 },
+  signupLink: { color:"#7B6CFF", fontWeight:"800", fontSize:14 },
+});

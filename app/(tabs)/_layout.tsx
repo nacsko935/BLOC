@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Tabs, useRouter } from "expo-router";
-import { Image, Platform, Pressable, View } from "react-native";
+import { Platform, Pressable, View } from "react-native";
 import { BlurView } from "expo-blur";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -11,8 +11,6 @@ export default function TabsLayout() {
   const router = useRouter();
   const { initAuth, loading, session } = useAuthStore();
   const { c, isDark } = useTheme();
-  const [logoError, setLogoError] = useState(false);
-
   useEffect(() => {
     initAuth().catch(() => router.replace("/(auth)/login"));
   }, [initAuth, router]);
@@ -21,10 +19,9 @@ export default function TabsLayout() {
     if (!loading && !session) router.replace("/(auth)/login");
   }, [loading, session, router]);
 
-  const tabBarBg        = isDark ? "#000000" : "#FFFFFF";
-  const tabBarBorder    = isDark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.10)";
-  const inactiveTint    = isDark ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.40)";
-  const fabBorder       = isDark ? "#000000" : "#F0F0F5";
+  const tabBarBg        = isDark ? "#07071A" : "#F6F5FF";
+  const tabBarBorder    = isDark ? "rgba(130,110,255,0.13)" : "rgba(91,76,255,0.08)";
+  const inactiveTint    = isDark ? "rgba(180,172,255,0.38)" : "rgba(13,11,46,0.35)";
 
   return (
     <View style={{ flex: 1 }}>
@@ -35,21 +32,21 @@ export default function TabsLayout() {
             backgroundColor: tabBarBg,
             borderTopWidth: 1,
             borderTopColor: tabBarBorder,
-            height: Platform.OS === "ios" ? 86 : 66,
-            paddingBottom: Platform.OS === "ios" ? 20 : 8,
-            paddingTop: 8,
-            paddingHorizontal: 4,
+            height: Platform.OS === "ios" ? 88 : 68,
+            paddingBottom: Platform.OS === "ios" ? 22 : 10,
+            paddingTop: 10,
+            paddingHorizontal: 8,
             position: "absolute",
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: -2 },
-            shadowOpacity: isDark ? 0.3 : 0.06,
-            shadowRadius: 8,
-            elevation: 8,
+            shadowColor: "#5B4CFF",
+            shadowOffset: { width: 0, height: -4 },
+            shadowOpacity: isDark ? 0.15 : 0.04,
+            shadowRadius: 20,
+            elevation: 12,
           },
-          tabBarActiveTintColor: "#6E5CFF",
+          tabBarActiveTintColor: "#7B6CFF",
           tabBarInactiveTintColor: inactiveTint,
-          tabBarLabelStyle: { fontSize: 10, fontWeight: "700", marginTop: 2, letterSpacing: 0.2 },
-          tabBarItemStyle: { minHeight: 44, marginHorizontal: 2 },
+          tabBarLabelStyle: { fontSize: 10, fontWeight: "800", marginTop: 3, letterSpacing: 0.3 },
+          tabBarItemStyle: { minHeight: 44 },
           tabBarBackground: () =>
             Platform.OS === "ios" ? (
               <BlurView
@@ -81,45 +78,60 @@ export default function TabsLayout() {
         <Tabs.Screen
           name="compose"
           options={{
-            title: "Créer", tabBarLabel: "Créer",
+            title: "", tabBarLabel: "",
             tabBarButton: () => (
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Créer"
+                accessibilityLabel="BLOC IA"
                 onPress={async () => {
                   await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                   router.push("/create" as any);
                 }}
                 style={{
-                  width: 62, height: 62, borderRadius: 18,
-                  backgroundColor: "#5B4CFF",
-                  alignItems: "center", justifyContent: "center",
-                  marginTop: -20,
-                  borderWidth: 2, borderColor: fabBorder,
-                  shadowColor: "#5B4CFF", shadowOpacity: 0.5, shadowRadius: 12,
-                  shadowOffset: { width: 0, height: 4 }, elevation: 10,
+                  flex: 1,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginTop: -22,
                 }}
               >
-                {!logoError ? (
-                  <Image
-                    source={require("../../assets/logo.png")}
-                    onError={() => setLogoError(true)}
-                    resizeMode="contain"
-                    style={{ width: 26, height: 26 }}
-                  />
-                ) : (
-                  <Ionicons name="add" size={26} color="#FFFFFF" />
-                )}
+                <View style={{
+                  width: 60, height: 60,
+                  borderRadius: 20,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  shadowColor: "#7B6CFF",
+                  shadowOpacity: 0.7,
+                  shadowRadius: 18,
+                  shadowOffset: { width: 0, height: 6 },
+                  elevation: 14,
+                  borderWidth: 2.5,
+                  borderColor: isDark ? "#1A1240" : "#E8E4FF",
+                  overflow: "hidden",
+                  backgroundColor: "#5B4CFF",
+                }}>
+                  <View style={{
+                    position:"absolute", top:0, left:0, right:0, bottom:0,
+                    backgroundColor: "transparent",
+                    borderRadius: 20,
+                    borderTopColor: "rgba(255,255,255,0.22)",
+                    borderTopWidth: 1,
+                  }}/>
+                  <Ionicons name="journal" size={26} color="#FFFFFF" />
+                  <View style={{
+                    position:"absolute", bottom: 8, right: 8,
+                    width: 6, height: 6, borderRadius: 3,
+                    backgroundColor: "rgba(255,255,255,0.5)",
+                  }}/>
+                </View>
               </Pressable>
             ),
-            tabBarLabelStyle: { display: "none" },
           }}
         />
         <Tabs.Screen
           name="courses"
           options={{
             title: "Cours", tabBarLabel: "Cours",
-            tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? "book" : "book-outline"} size={20} color={color} />,
+            tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? "school" : "school-outline"} size={20} color={color} />,
           }}
           listeners={{ tabPress: () => Haptics.selectionAsync() }}
         />

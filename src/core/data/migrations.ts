@@ -171,4 +171,26 @@ export async function migrate() {
     await db.execAsync(`ALTER TABLE users ADD COLUMN password TEXT;`);
   } catch (error) {
   }
+
+  // Add user_id to courses for data isolation per user
+  try {
+    await db.execAsync(`ALTER TABLE courses ADD COLUMN user_id TEXT;`);
+  } catch {}
+
+  // Add user_id to notes for data isolation
+  try {
+    await db.execAsync(`ALTER TABLE notes ADD COLUMN user_id TEXT;`);
+  } catch {}
+
+  // Add user_id to tasks for data isolation
+  try {
+    await db.execAsync(`ALTER TABLE tasks ADD COLUMN user_id TEXT;`);
+  } catch {}
+
+  // Index for user-scoped queries
+  try {
+    await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_courses_user ON courses(user_id);`);
+    await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_notes_user ON notes(user_id);`);
+    await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_tasks_user ON tasks(user_id);`);
+  } catch {}
 }

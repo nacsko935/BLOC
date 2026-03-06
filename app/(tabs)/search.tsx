@@ -7,6 +7,8 @@ import Card from "../../src/core/ui/Card";
 import IconButton from "../../src/core/ui/IconButton";
 import { Ionicons } from "@expo/vector-icons";
 import { searchGroupsPage, searchPostsPage, searchUsersPage } from "../../lib/services/searchService";
+import { useAuthStore } from "../../state/useAuthStore";
+import { toggleFollow } from "../../lib/services/profileService";
 
 const tabs = [
   { key: "users", label: "Utilisateurs" },
@@ -24,6 +26,8 @@ export default function Search() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const { user: currentUser } = useAuthStore();
+  const [following, setFollowing] = useState<Record<string,boolean>>({});
   const [users, setUsers] = useState<any[]>([]);
   const [groups, setGroups] = useState<any[]>([]);
   const [posts, setPosts] = useState<any[]>([]);
@@ -187,8 +191,32 @@ export default function Search() {
                 onPress={() => router.push({ pathname: "/profile/[id]", params: { id: item.id } })}
               >
                 <Card>
-                  <Text style={styles.itemTitle}>{getUserTitle(item)}</Text>
-                  <Text style={styles.itemSubtitle}>@{getUserHandle(item)}</Text>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                    {/* Avatar with follow "+" */}
+                    <View style={{ position: "relative" }}>
+                      <View style={{ width:46, height:46, borderRadius:23, backgroundColor:"rgba(123,108,255,0.2)", alignItems:"center", justifyContent:"center" }}>
+                        <Text style={{ color:"#7B6CFF", fontWeight:"900", fontSize:18 }}>
+                          {getUserTitle(item).charAt(0).toUpperCase()}
+                        </Text>
+                      </View>
+                      {item.id !== currentUser?.id && (
+                        <Pressable
+                          onPress={async () => {
+                            const next = await toggleFollow(item.id).catch(() => !following[item.id]);
+                            setFollowing(prev => ({ ...prev, [item.id]: next }));
+                          }}
+                          style={{ position:"absolute", bottom:-2, right:-2, width:18, height:18, borderRadius:9,
+                            backgroundColor: following[item.id] ? "#34C759" : "#7B6CFF",
+                            alignItems:"center", justifyContent:"center", borderWidth:2, borderColor:"#111" }}>
+                          <Ionicons name={following[item.id] ? "checkmark" : "add"} size={10} color="#fff" />
+                        </Pressable>
+                      )}
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.itemTitle}>{getUserTitle(item)}</Text>
+                      <Text style={styles.itemSubtitle}>@{getUserHandle(item)}</Text>
+                    </View>
+                  </View>
                 </Card>
               </Pressable>
             );

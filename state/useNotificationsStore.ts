@@ -18,109 +18,131 @@ type NotifState = {
   notifications: AppNotification[];
   unreadCount: number;
   loading: boolean;
-  load: () => Promise<void>;
+  subscribed: boolean;
+  load: (userId: string) => Promise<void>;
+  subscribe: (userId: string) => () => void;
   markAllRead: () => Promise<void>;
   markRead: (id: string) => Promise<void>;
   addLocal: (n: AppNotification) => void;
 };
 
-// Génère des notifs de démo si la table n'existe pas encore
-const DEMO_NOTIFS: AppNotification[] = [
-  {
-    id: "n1", type: "follow", read: false,
-    title: "Nouveau abonné",
-    body: "nadia.dev a commencé à te suivre.",
-    created_at: new Date(Date.now() - 300000).toISOString(),
-    from_username: "nadia.dev",
-  },
-  {
-    id: "n2", type: "like", read: false,
-    title: "J'aime",
-    body: "prof.martin a aimé ta publication.",
-    created_at: new Date(Date.now() - 900000).toISOString(),
-    from_username: "prof.martin",
-  },
-  {
-    id: "n3", type: "comment", read: false,
-    title: "Nouveau commentaire",
-    body: "samir.ds a commenté : \"Très utile, merci !\"",
-    created_at: new Date(Date.now() - 3600000).toISOString(),
-    from_username: "samir.ds",
-  },
-  {
-    id: "n4", type: "repost", read: true,
-    title: "Republication",
-    body: "leila.ai a republié ta fiche React Native.",
-    created_at: new Date(Date.now() - 7200000).toISOString(),
-    from_username: "leila.ai",
-  },
-  {
-    id: "n5", type: "message", read: true,
-    title: "Nouveau message",
-    body: "bloc.team t'a envoyé un message.",
-    created_at: new Date(Date.now() - 14400000).toISOString(),
-    from_username: "bloc.team",
-  },
-];
-
 export const useNotificationsStore = create<NotifState>((set, get) => ({
   notifications: [],
   unreadCount: 0,
   loading: false,
+  subscribed: false,
 
-  load: async () => {
+  load: async (userId: string) => {
+    if (!userId) return;
     set({ loading: true });
     try {
       const supabase = getSupabaseOrThrow();
       const { data, error } = await supabase
         .from("notifications")
         .select("*")
+        .eq("user_id", userId)
         .order("created_at", { ascending: false })
         .limit(50);
-      if (error || !data || data.length === 0) {
-        // Fallback démo
-        const unread = DEMO_NOTIFS.filter(n => !n.read).length;
-        set({ notifications: DEMO_NOTIFS, unreadCount: unread, loading: false });
+
+      if (error) {
+        // Table might not exist yet - show empty state
+        set({ notifications: [], unreadCount: 0, loading: false });
         return;
       }
-      const notifs = data as AppNotification[];
-      const unread = notifs.filter(n => !n.read).length;
-      set({ notifications: notifs, unreadCount: unread, loading: false });
+
+      const notifs = (data || []) as AppNotification[];
+      set({
+        notifications: notifs,
+        unreadCount: notifs.filter(n => !n.read).length,
+        loading: false,
+      });
     } catch {
-      const unread = DEMO_NOTIFS.filter(n => !n.read).length;
-      set({ notifications: DEMO_NOTIFS, unreadCount: unread, loading: false });
+      set({ notifications: [], unreadCount: 0, loading: false });
     }
   },
 
-  markRead: async (id: string) => {
-    set(s => {
-      const notifications = s.notifications.map(n =>
-        n.id === id ? { ...n, read: true } : n
-      );
-      const unreadCount = notifications.filter(n => !n.read).length;
-      return { notifications, unreadCount };
-    });
+  subscribe: (userId: string) => {
+    if (!userId || get().subscribed) return () => {};
     try {
       const supabase = getSupabaseOrThrow();
-      await supabase.from("notifications").update({ read: true }).eq("id", id);
-    } catch {}
+      const channel = supabase
+        .channel(`notifications:${userId}`)
+        .on("postgres_changes", {
+          event: "INSERT",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${userId}`,
+        }, (payload) => {
+          const n = payload.new as AppNotification;
+          set(state => ({
+            notifications: [n, ...state.notifications],
+            unreadCount: state.unreadCount + 1,
+          }));
+        })
+        .subscribe();
+
+      set({ subscribed: true });
+      return () => {
+        supabase.removeChannel(channel);
+        set({ subscribed: false });
+      };
+    } catch {
+      return () => {};
+    }
   },
 
   markAllRead: async () => {
-    set(s => ({
-      notifications: s.notifications.map(n => ({ ...n, read: true })),
-      unreadCount: 0,
-    }));
+    const { notifications } = get();
+    const unread = notifications.filter(n => !n.read).map(n => n.id);
+    if (!unread.length) return;
     try {
       const supabase = getSupabaseOrThrow();
-      await supabase.from("notifications").update({ read: true }).eq("read", false);
+      await supabase.from("notifications").update({ read: true }).in("id", unread);
+      set(state => ({
+        notifications: state.notifications.map(n => ({ ...n, read: true })),
+        unreadCount: 0,
+      }));
+    } catch {}
+  },
+
+  markRead: async (id: string) => {
+    try {
+      const supabase = getSupabaseOrThrow();
+      await supabase.from("notifications").update({ read: true }).eq("id", id);
+      set(state => ({
+        notifications: state.notifications.map(n => n.id === id ? { ...n, read: true } : n),
+        unreadCount: Math.max(0, state.unreadCount - 1),
+      }));
     } catch {}
   },
 
   addLocal: (n: AppNotification) => {
-    set(s => ({
-      notifications: [n, ...s.notifications],
-      unreadCount: s.unreadCount + (n.read ? 0 : 1),
+    set(state => ({
+      notifications: [n, ...state.notifications],
+      unreadCount: state.unreadCount + 1,
     }));
   },
 }));
+
+// Helper to insert a notification in Supabase (called from actions like like, comment, etc.)
+export async function sendNotification(opts: {
+  toUserId: string;
+  fromUserId: string;
+  type: AppNotification["type"];
+  title: string;
+  body: string;
+  targetId?: string;
+}) {
+  try {
+    const supabase = getSupabaseOrThrow();
+    await supabase.from("notifications").insert({
+      user_id: opts.toUserId,
+      from_user_id: opts.fromUserId,
+      type: opts.type,
+      title: opts.title,
+      body: opts.body,
+      target_id: opts.targetId,
+      read: false,
+    });
+  } catch {}
+}

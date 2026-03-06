@@ -3,11 +3,21 @@ import type { Course, CourseNote, CourseQCM, CourseDeadline } from "./coursesDat
 
 // ============= COURSES =============
 
-export async function getAllCourses(): Promise<Course[]> {
+export async function getAllCourses(userId?: string): Promise<Course[]> {
   const db = await getDb();
-  const result = await db.getAllAsync<any>(
-    `SELECT * FROM courses ORDER BY semester, name`
-  );
+  let result: any[];
+  if (userId) {
+    result = await db.getAllAsync<any>(
+      `SELECT * FROM courses WHERE user_id = ? OR user_id IS NULL ORDER BY semester, name`,
+      [userId]
+    );
+    // Filter strictly to only user's own courses
+    result = result.filter((r: any) => r.user_id === userId);
+  } else {
+    result = await db.getAllAsync<any>(
+      `SELECT * FROM courses ORDER BY semester, name`
+    );
+  }
   
   return result.map(row => ({
     id: row.id,
@@ -63,6 +73,7 @@ export async function createCourse(course: {
   professorHandle: string;
   color: string;
   icon: string;
+  userId?: string;
 }): Promise<string> {
   const db = await getDb();
   const id = `course_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -70,8 +81,8 @@ export async function createCourse(course: {
   await db.runAsync(
     `INSERT INTO courses (
       id, name, semester, professor_name, professor_handle, 
-      color, icon, notes_count, qcm_count, progress, last_activity
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, 0, ?)`,
+      color, icon, notes_count, qcm_count, progress, last_activity, user_id
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, 0, ?, ?)`,
     [
       id,
       course.name,
@@ -80,7 +91,8 @@ export async function createCourse(course: {
       course.professorHandle,
       course.color,
       course.icon,
-      'à l\'instant',
+      "à l'instant",
+      course.userId || null,
     ]
   );
   

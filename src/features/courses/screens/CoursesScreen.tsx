@@ -31,14 +31,17 @@ export default function CoursesListScreen() {
   const load = async () => {
     setLoading(true); setError(null);
     try {
-      const db = await getAllCourses();
-      setCourses(db.length > 0 ? db : mockCourses);
+      const uid = user?.id;
+      const db = await getAllCourses(uid);
+      // Never show mockCourses — user starts with empty list
+      setCourses(db);
     } catch {
-      setError("Impossible de charger les cours."); setCourses(mockCourses);
+      setError("Impossible de charger les cours.");
+      setCourses([]);
     } finally { setLoading(false); }
   };
 
-  useEffect(()=>{ load(); }, []);
+  useEffect(()=>{ load(); }, [user?.id]);
 
   const filtered = useMemo(()=> sem === "Tous" ? courses : courses.filter(c=>c.semester===sem), [sem, courses]);
   const allCourses = useMemo(() => courses, [courses]);
@@ -101,6 +104,14 @@ export default function CoursesListScreen() {
             {loading ? "Chargement…" : `${filtered.length} matière${filtered.length>1?"s":""}`}
           </Text>
         </View>
+        <Pressable onPress={()=>router.push("/qcm/generate")}
+          style={({ pressed })=>[{ height:42, paddingHorizontal:14, borderRadius:21,
+            backgroundColor:"rgba(110,92,255,0.15)", borderWidth:1, borderColor:"#6E5CFF",
+            alignItems:"center", justifyContent:"center", flexDirection:"row", gap:6 },
+            pressed&&{opacity:0.8}]}>
+          <Ionicons name="flash" size={16} color="#6E5CFF" />
+          <Text style={{ color:"#6E5CFF", fontWeight:"700", fontSize:13 }}>QCM IA</Text>
+        </Pressable>
         <Pressable onPress={()=>router.push("/(modals)/course-new")}
           style={({ pressed })=>[{ width:42, height:42, borderRadius:21,
             backgroundColor:c.accentPurple, alignItems:"center", justifyContent:"center" },

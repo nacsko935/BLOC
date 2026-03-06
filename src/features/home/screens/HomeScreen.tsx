@@ -5,6 +5,7 @@ import {
   Pressable, RefreshControl, Share, Text, TextInput, View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../../core/theme/ThemeProvider";
 import { PostCard } from "../../../../src/components/PostCard";
@@ -20,30 +21,42 @@ import { seedInitialContentIfEmptyDev } from "../../../../lib/dev/seed";
 
 // Posts de démonstration affichés quand Supabase est vide/non configuré
 const DEMO_FEED_POSTS: FeedPost[] = [
-  { id:"demo-1", author_id:"bot-1", filiere:"Informatique", title:"QCM Sécurité Réseaux – Corrigé", content:"15 questions sur les firewalls, VPN et protocoles SSL/TLS. Niveau partiel.", type:"qcm", attachment_url:null, created_at:new Date().toISOString(),
+  { id:"demo-1", author_id:"bot-1", filiere:"Informatique", title:"QCM Sécurité Réseaux – Corrigé", content:"15 questions sur les firewalls, VPN et protocoles SSL/TLS. Niveau partiel. Idéal pour valider ses connaissances avant l'exam.", type:"qcm", attachment_url:null, created_at:new Date().toISOString(),
     author:{ id:"bot-1", username:"prof.martin", full_name:"Prof. Martin", avatar_url:null, filiere:"Informatique", niveau:"L3", bio:null },
-    likesCount:42, commentsCount:7, savesCount:5, likedByMe:false, savedByMe:false },
-  { id:"demo-2", author_id:"bot-2", filiere:"Développement", title:"Fiche React Native – Hooks essentiels", content:"useState, useEffect, useCallback et useRef condensés en 1 page. Patterns de navigation inclus.", type:"pdf", attachment_url:null, created_at:new Date(Date.now()-3600000).toISOString(),
+    likesCount:42, commentsCount:7, savesCount:5, likedByMe:false, savedByMe:false, repostedByMe:false, repostsCount:3 },
+  { id:"demo-2", author_id:"bot-2", filiere:"Développement", title:"Fiche React Native – Hooks essentiels", content:"useState, useEffect, useCallback et useRef condensés en 1 page. Patterns de navigation inclus. Save ce post pour tes révisions !", type:"pdf", attachment_url:null, created_at:new Date(Date.now()-1800000).toISOString(),
     author:{ id:"bot-2", username:"nadia.dev", full_name:"Nadia Selmi", avatar_url:null, filiere:"Développement", niveau:"L3", bio:null },
-    likesCount:28, commentsCount:4, savesCount:11, likedByMe:false, savedByMe:false },
-  { id:"demo-3", author_id:"bot-3", filiere:"Général", title:"Checklist candidature alternance 📋", content:"Template de suivi de candidature + relances RH en 3 étapes. Utilisé par +200 étudiants l'an dernier.", type:"text", attachment_url:null, created_at:new Date(Date.now()-7200000).toISOString(),
+    likesCount:28, commentsCount:4, savesCount:11, likedByMe:false, savedByMe:false, repostedByMe:false, repostsCount:6 },
+  { id:"demo-3", author_id:"bot-3", filiere:"Général", title:"✅ Checklist candidature alternance", content:"Template de suivi de candidature + relances RH en 3 étapes. Utilisé par +200 étudiants l'an dernier. 100% gratuit à télécharger.", type:"text", attachment_url:null, created_at:new Date(Date.now()-3600000).toISOString(),
     author:{ id:"bot-3", username:"bloc.team", full_name:"Équipe BLOC", avatar_url:null, filiere:"Général", niveau:"L2", bio:null },
-    likesCount:89, commentsCount:12, savesCount:34, likedByMe:false, savedByMe:false },
-  { id:"demo-4", author_id:"bot-4", filiere:"IA / Data", title:"QCM IA Générative – 20 questions", content:"Questions sur les prompts, hallucinations et évaluation de modèles. Idéal pour se préparer à l'exam.", type:"qcm", attachment_url:null, created_at:new Date(Date.now()-10800000).toISOString(),
+    likesCount:89, commentsCount:12, savesCount:34, likedByMe:false, savedByMe:false, repostedByMe:false, repostsCount:21 },
+  { id:"demo-4", author_id:"bot-4", filiere:"IA / Data", title:"QCM IA Générative – 20 questions", content:"Questions sur les prompts, hallucinations et évaluation de modèles. Idéal pour se préparer à l'exam de machine learning.", type:"qcm", attachment_url:null, created_at:new Date(Date.now()-5400000).toISOString(),
     author:{ id:"bot-4", username:"leila.ai", full_name:"Leila AI", avatar_url:null, filiere:"IA / Data", niveau:"M1", bio:null },
-    likesCount:56, commentsCount:9, savesCount:22, likedByMe:false, savedByMe:false },
-  { id:"demo-5", author_id:"bot-5", filiere:"Informatique", title:"Résumé SGBD – Jointures & Transactions", content:"Plan compact pour couvrir jointures, index et transactions avant le partiel. 8 pages.", type:"pdf", attachment_url:null, created_at:new Date(Date.now()-14400000).toISOString(),
+    likesCount:56, commentsCount:9, savesCount:22, likedByMe:false, savedByMe:false, repostedByMe:false, repostsCount:8 },
+  { id:"demo-5", author_id:"bot-5", filiere:"Informatique", title:"Résumé SGBD – Jointures & Transactions", content:"Plan compact pour couvrir jointures, index et transactions avant le partiel. 8 pages synthétisées depuis le cours magistral.", type:"pdf", attachment_url:null, created_at:new Date(Date.now()-7200000).toISOString(),
     author:{ id:"bot-5", username:"samir.ds", full_name:"Samir DS", avatar_url:null, filiere:"Informatique", niveau:"L3", bio:null },
-    likesCount:31, commentsCount:3, savesCount:8, likedByMe:false, savedByMe:false },
-  { id:"demo-6", author_id:"bot-6", filiere:"Développement", title:"💡 Astuce : Git rebase vs merge", content:"Quand utiliser rebase pour garder un historique propre, et quand merge est préférable. Exemples concrets inclus.", type:"text", attachment_url:null, created_at:new Date(Date.now()-18000000).toISOString(),
+    likesCount:31, commentsCount:3, savesCount:8, likedByMe:false, savedByMe:false, repostedByMe:false, repostsCount:2 },
+  { id:"demo-6", author_id:"bot-6", filiere:"Développement", title:"💡 Git rebase vs merge — quand utiliser quoi ?", content:"Rebase pour un historique propre en solo, merge pour les branches partagées. Avec exemples visuels et cas concrets tirés de projets réels.", type:"text", attachment_url:null, created_at:new Date(Date.now()-10800000).toISOString(),
     author:{ id:"bot-6", username:"karim.code", full_name:"Karim Code", avatar_url:null, filiere:"Développement", niveau:"M1", bio:null },
-    likesCount:63, commentsCount:14, savesCount:19, likedByMe:false, savedByMe:false },
-  { id:"demo-7", author_id:"bot-7", filiere:"Cybersécurité", title:"Top 10 failles OWASP – Résumé 2025", content:"Injection SQL, XSS, CSRF… Les 10 vulnérabilités web les plus critiques expliquées en langage clair.", type:"pdf", attachment_url:null, created_at:new Date(Date.now()-21600000).toISOString(),
+    likesCount:63, commentsCount:14, savesCount:19, likedByMe:false, savedByMe:false, repostedByMe:false, repostsCount:11 },
+  { id:"demo-7", author_id:"bot-7", filiere:"Cybersécurité", title:"🔐 Top 10 failles OWASP – Résumé 2025", content:"Injection SQL, XSS, CSRF, IDOR… Les 10 vulnérabilités web les plus critiques expliquées avec exemples de code vulnérable et patchs recommandés.", type:"pdf", attachment_url:null, created_at:new Date(Date.now()-14400000).toISOString(),
     author:{ id:"bot-7", username:"sec.watcher", full_name:"Sec Watcher", avatar_url:null, filiere:"Cybersécurité", niveau:"M2", bio:null },
-    likesCount:101, commentsCount:18, savesCount:47, likedByMe:false, savedByMe:false },
-  { id:"demo-8", author_id:"bot-8", filiere:"Général", title:"🧠 Comment mémoriser 2× plus vite", content:"Technique de la répétition espacée + méthode Feynman appliquée aux révisions. Résultats prouvés en 3 semaines.", type:"text", attachment_url:null, created_at:new Date(Date.now()-25200000).toISOString(),
+    likesCount:101, commentsCount:18, savesCount:47, likedByMe:false, savedByMe:false, repostedByMe:false, repostsCount:33 },
+  { id:"demo-8", author_id:"bot-8", filiere:"Général", title:"🧠 Mémoriser 2× plus vite — méthode prouvée", content:"Répétition espacée (Anki) + méthode Feynman + interleaving. Résultats prouvés sur 3 semaines de test avec 50 étudiants. Adopte-la maintenant.", type:"text", attachment_url:null, created_at:new Date(Date.now()-18000000).toISOString(),
     author:{ id:"bot-8", username:"studylab", full_name:"Study Lab", avatar_url:null, filiere:"Général", niveau:"L2", bio:null },
-    likesCount:154, commentsCount:22, savesCount:88, likedByMe:false, savedByMe:false },
+    likesCount:154, commentsCount:22, savesCount:88, likedByMe:false, savedByMe:false, repostedByMe:false, repostsCount:45 },
+  { id:"demo-9", author_id:"bot-9", filiere:"Mathématiques", title:"📐 Résumé Analyse L2 – Séries entières", content:"Rayon de convergence, développements limités usuels et applications. 3 pages condensées depuis les 12 TD du semestre.", type:"pdf", attachment_url:null, created_at:new Date(Date.now()-21600000).toISOString(),
+    author:{ id:"bot-9", username:"maths.pro", full_name:"Maths Pro", avatar_url:null, filiere:"Mathématiques", niveau:"L2", bio:null },
+    likesCount:44, commentsCount:6, savesCount:29, likedByMe:false, savedByMe:false, repostedByMe:false, repostsCount:7 },
+  { id:"demo-10", author_id:"bot-10", filiere:"Général", title:"🚀 BLOC IA est là — génère tes QCM auto", content:"Upload ton cours PDF ou prends une photo de tes notes, et l'IA génère automatiquement des QCM pour te tester. Clique sur Créer > QCM IA pour essayer maintenant !", type:"text", attachment_url:null, created_at:new Date(Date.now()-25200000).toISOString(),
+    author:{ id:"bot-10", username:"bloc.team", full_name:"Équipe BLOC", avatar_url:null, filiere:"Général", niveau:"Team", bio:null },
+    likesCount:203, commentsCount:31, savesCount:112, likedByMe:false, savedByMe:false, repostedByMe:false, repostsCount:67 },
+  { id:"demo-11", author_id:"bot-11", filiere:"Économie", title:"📊 Cours Microéconomie – Equilibre de Nash", content:"Théorie des jeux appliquée : équilibre de Nash, dilemme du prisonnier, stratégies dominantes. Exemples corrigés inclus.", type:"pdf", attachment_url:null, created_at:new Date(Date.now()-32400000).toISOString(),
+    author:{ id:"bot-11", username:"eco.prof", full_name:"Prof. Éco", avatar_url:null, filiere:"Économie", niveau:"M1", bio:null },
+    likesCount:37, commentsCount:5, savesCount:18, likedByMe:false, savedByMe:false, repostedByMe:false, repostsCount:4 },
+  { id:"demo-12", author_id:"bot-12", filiere:"Développement", title:"⚡ TypeScript en 10 minutes — l'essentiel", content:"Types, interfaces, génériques et décorateurs. Le minimum vital pour un projet React/Node sérieux. Exemples compilables fournis.", type:"text", attachment_url:null, created_at:new Date(Date.now()-36000000).toISOString(),
+    author:{ id:"bot-12", username:"ts.master", full_name:"TS Master", avatar_url:null, filiere:"Développement", niveau:"M2", bio:null },
+    likesCount:82, commentsCount:17, savesCount:41, likedByMe:false, savedByMe:false, repostedByMe:false, repostsCount:19 },
 ];
 
 
@@ -157,7 +170,7 @@ function HomeScreenComponent() {
   const insets  = useSafeAreaInsets();
   const { c }   = useTheme();
   const { profile } = useAuthStore();
-  const { posts, loading, refreshing, loadingMore, commentsByPost, commentsLoading, refresh, loadMore, toggleLike, toggleSave, openComments, addComment } = useFeedStore();
+  const { posts, loading, refreshing, loadingMore, commentsByPost, commentsLoading, refresh, loadMore, toggleLike, toggleSave, toggleRepost, openComments, addComment } = useFeedStore();
 
   const { unreadCount: notifCount, load: loadNotifs } = useNotificationsStore();
   const [selectedPost, setSelectedPost] = useState<FeedPost | null>(null);
@@ -244,7 +257,7 @@ function HomeScreenComponent() {
           </Pressable>
           {/* 💬 Messagerie */}
           <Pressable
-            onPress={() => router.push("/(tabs)/messages/index")}
+            onPress={() => router.push("/messages" as any)}
             style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: c.cardAlt, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: c.border }}
           >
             <Ionicons name="chatbubble-ellipses-outline" size={18} color={c.textPrimary} />
@@ -316,6 +329,7 @@ function HomeScreenComponent() {
             post={item}
             onToggleLike={async id => { try { await toggleLike(id); } catch {} }}
             onToggleSave={async id => { try { await toggleSave(id); } catch {} }}
+            onToggleRepost={async id => { try { await toggleRepost(id); } catch {} }}
             onPressComments={onPressComments}
             onPressContent={onPressContent}
             onPressShare={handleShare}

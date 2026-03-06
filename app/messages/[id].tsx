@@ -232,7 +232,7 @@ export default function ChatScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: isDark ? "#000" : "#FFF" }}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={Platform.OS === "ios" ? insets.top : 24}>
 
         {/* Header dégradé selon thème */}
         <LinearGradient
@@ -253,7 +253,10 @@ export default function ChatScreen() {
           <Pressable onPress={() => setThemeOpen(true)} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(0,0,0,0.22)", alignItems: "center", justifyContent: "center" }}>
             <Ionicons name="color-palette-outline" size={18} color="#FFF" />
           </Pressable>
-          <Pressable style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(0,0,0,0.22)", alignItems: "center", justifyContent: "center" }}>
+          <Pressable onPress={() => Alert.alert("Appel audio", `Appel en cours vers ${contact}...`, [{ text: "Raccrocher", style: "destructive" }, { text: "OK" }])} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(0,0,0,0.22)", alignItems: "center", justifyContent: "center" }}>
+            <Ionicons name="call-outline" size={18} color="#FFF" />
+          </Pressable>
+          <Pressable onPress={() => Alert.alert("Appel vidéo", `Démarrage de l'appel vidéo avec ${contact}...`, [{ text: "Raccrocher", style: "destructive" }, { text: "OK" }])} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(0,0,0,0.22)", alignItems: "center", justifyContent: "center" }}>
             <Ionicons name="videocam-outline" size={18} color="#FFF" />
           </Pressable>
         </LinearGradient>

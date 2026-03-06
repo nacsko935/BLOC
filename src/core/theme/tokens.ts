@@ -5,30 +5,30 @@ const shared = {
 };
 
 export const darkColors = {
-  background:          "#000000",
-  backgroundSecondary: "#0D0D0D",
-  card:                "#111111",
-  cardAlt:             "#1A1A1A",
-  border:              "rgba(255,255,255,0.10)",
-  borderStrong:        "rgba(255,255,255,0.18)",
-  textPrimary:         "#FFFFFF",
-  textSecondary:       "rgba(255,255,255,0.50)",
+  background:          "#07071A",   // deep midnight navy
+  backgroundSecondary: "#0C0C22",
+  card:                "#0F0F28",   // indigo-tinted card
+  cardAlt:             "#181836",   // slightly lighter
+  border:              "rgba(130,110,255,0.13)",
+  borderStrong:        "rgba(130,110,255,0.26)",
+  textPrimary:         "#EAE8FF",   // warm white with purple tint
+  textSecondary:       "rgba(180,172,255,0.42)",
   accentPurple:        "#7B6CFF",
   accentBlue:          "#4DA3FF",
   accentOrange:        "#FF8C00",
-  success:             "#34C759",
-  danger:              "#FF3B30",
+  success:             "#2ED573",
+  danger:              "#FF4757",
 };
 
 export const lightColors = {
-  background:          "#FFFFFF",
-  backgroundSecondary: "#F7F7F7",
+  background:          "#F6F5FF",
+  backgroundSecondary: "#EEEEFF",
   card:                "#FFFFFF",
-  cardAlt:             "#F0F0F0",
-  border:              "rgba(0,0,0,0.10)",
-  borderStrong:        "rgba(0,0,0,0.20)",
-  textPrimary:         "#000000",
-  textSecondary:       "rgba(0,0,0,0.50)",
+  cardAlt:             "#F0EEFF",
+  border:              "rgba(91,76,255,0.10)",
+  borderStrong:        "rgba(91,76,255,0.22)",
+  textPrimary:         "#0D0B2E",
+  textSecondary:       "rgba(13,11,46,0.45)",
   accentPurple:        "#5B4CFF",
   accentBlue:          "#1A6FE8",
   accentOrange:        "#E07A00",

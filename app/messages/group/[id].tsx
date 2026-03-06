@@ -3,6 +3,7 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -71,29 +72,23 @@ export default function GroupChatScreen() {
 
   return (
     <View style={styles.container}>
-      <KeyboardAvoidingView style={styles.keyboard} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      <KeyboardAvoidingView style={styles.keyboard} behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 24}>
         <View style={styles.header}>
-          <AppButton variant="secondary" onPress={() => router.back()} style={styles.headerButton}>
+          <Pressable onPress={() => router.back()} style={styles.headerButton}>
             <Ionicons name="chevron-back" size={20} color="#F5F5F5" />
-          </AppButton>
+          </Pressable>
           <View style={styles.headerCenter}>
             <Text style={styles.headerTitle}>{groupName}</Text>
-            <Text style={styles.headerSubtitle}>{memberCount} membres</Text>
+            <Text style={styles.headerSubtitle}>{memberCount} membre{memberCount > 1 ? "s" : ""} · En ligne</Text>
           </View>
-          <AppButton
-            onPress={async () => {
-              try {
-                await leaveGroup(groupId);
-                router.back();
-              } catch (error: any) {
-                Alert.alert("Erreur", error?.message || "Impossible de quitter le groupe");
-              }
-            }}
-            variant="secondary"
-            style={styles.headerButton}
-          >
-            <Ionicons name="exit-outline" size={16} color="#F5F5F5" />
-          </AppButton>
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            <Pressable onPress={() => Alert.alert("📞 Appel de groupe", `Appel vocal avec ${groupName}`, [{ text: "Raccrocher 🔴", style: "destructive" }, { text: "OK" }])} style={styles.headerButton}>
+              <Ionicons name="call-outline" size={18} color="#F5F5F5" />
+            </Pressable>
+            <Pressable onPress={() => Alert.alert("🎥 Appel vidéo", `Appel vidéo avec ${groupName}`, [{ text: "Raccrocher 🔴", style: "destructive" }, { text: "OK" }])} style={styles.headerButton}>
+              <Ionicons name="videocam-outline" size={18} color="#F5F5F5" />
+            </Pressable>
+          </View>
         </View>
 
         <FlatList
@@ -167,7 +162,7 @@ const styles = StyleSheet.create({
     borderTopColor: "#17171D",
     paddingHorizontal: 12,
     paddingTop: 10,
-    paddingBottom: Platform.OS === "ios" ? 28 : 12,
+    paddingBottom: Platform.OS === "ios" ? 28 : 16,
     backgroundColor: "#09090C",
   },
   input: {

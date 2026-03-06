@@ -282,3 +282,70 @@ export async function addComment(postId: string, content: string) {
   return fetchComments(postId);
 }
 
+
+export async function toggleRepost(postId: string): Promise<boolean> {
+  const userId = await requireUserId();
+  const supabase = getSupabaseOrThrow();
+  try {
+    const existing = await supabase.from("post_reposts").select("id").eq("post_id", postId).eq("user_id", userId).maybeSingle();
+    if (existing.data) {
+      await supabase.from("post_reposts").delete().eq("post_id", postId).eq("user_id", userId);
+      return false;
+    }
+    await supabase.from("post_reposts").insert({ post_id: postId, user_id: userId });
+    return true;
+  } catch {
+    // If table doesn't exist, use local state
+    return true;
+  }
+}
+
+export async function fetchSavedPosts(): Promise<FeedPost[]> {
+  const userId = await requireUserId();
+  const supabase = getSupabaseOrThrow();
+  try {
+    const { data, error } = await supabase
+      .from("post_saves")
+      .select("post_id, posts(*)")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    // Map to FeedPost format
+    return ((data ?? []) as any[]).map((row: any) => {
+      const p = row.posts ?? {};
+      return {
+        ...p,
+        author: null,
+        likesCount: 0, commentsCount: 0, savesCount: 0,
+        likedByMe: false, savedByMe: true, repostedByMe: false, repostsCount: 0,
+      } as FeedPost;
+    });
+  } catch {
+    return [];
+  }
+}
+
+export async function fetchRepostedPosts(): Promise<FeedPost[]> {
+  const userId = await requireUserId();
+  const supabase = getSupabaseOrThrow();
+  try {
+    const { data, error } = await supabase
+      .from("post_reposts")
+      .select("post_id, posts(*)")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return ((data ?? []) as any[]).map((row: any) => {
+      const p = row.posts ?? {};
+      return {
+        ...p,
+        author: null,
+        likesCount: 0, commentsCount: 0, savesCount: 0,
+        likedByMe: false, savedByMe: false, repostedByMe: true, repostsCount: 0,
+        isRepost: true,
+      } as FeedPost;
+    });
+  } catch {
+    return [];
+  }
+}

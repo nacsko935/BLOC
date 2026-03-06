@@ -14,6 +14,8 @@ export type Profile = {
   notification_enabled?: boolean | null;
   push_enabled?: boolean | null;
   analytics_enabled?: boolean | null;
+  avatar_changed_at?: string | null;
+  is_first_login?: boolean | null;
 };
 
 export type PostType = "text" | "pdf" | "qcm";
@@ -55,6 +57,24 @@ export type FeedPost = Post & {
   savesCount: number;
   likedByMe: boolean;
   savedByMe: boolean;
+  repostedByMe?: boolean;
+  repostsCount?: number;
+  isRepost?: boolean;
+  repostedBy?: Profile | null;
+};
+
+export type UserStats = {
+  followersCount: number;
+  followingCount: number;
+  totalLikesReceived: number;
+};
+
+export type LevelInfo = {
+  level: number;
+  points: number;
+  pointsForNextLevel: number;
+  title: string;
+  badge: string;
 };
 
 export type FeedComment = Comment & {
