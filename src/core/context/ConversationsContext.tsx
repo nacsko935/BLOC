@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { mockConversations, Conversation, Message } from '../../features/messages/messagesData';
+import { Conversation, Message } from '../../features/messages/messagesData';
 
 interface ConversationsContextType {
   conversations: Conversation[];
@@ -9,7 +9,7 @@ interface ConversationsContextType {
 const ConversationsContext = createContext<ConversationsContextType | undefined>(undefined);
 
 export function ConversationsProvider({ children }: { children: ReactNode }) {
-  const [conversations, setConversations] = useState<Conversation[]>(mockConversations);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
 
   const updateLastMessage = (conversationId: string, message: Message) => {
     setConversations((prev) =>

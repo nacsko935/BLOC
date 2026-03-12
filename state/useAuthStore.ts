@@ -24,9 +24,31 @@ type AuthState = {
   signOut: () => Promise<void>;
   updateProfile: (patch: Partial<Profile>) => Promise<void>;
   updateAvatar: (localUri: string) => Promise<void>;
+  isFirstLogin: () => boolean;
+  clearFirstLogin: () => Promise<void>;
 };
 
+type SetFn = (partial: Partial<AuthState>) => void;
+
 let unsubscribeAuth: (() => void) | null = null;
+
+function shouldEnablePush(profile: Profile | null): boolean {
+  return (profile?.push_enabled ?? profile?.notification_enabled) ?? true;
+}
+
+function setupAuthListener(set: SetFn): void {
+  // Always clean up before (re)subscribing to avoid duplicate listeners
+  unsubscribeAuth?.();
+  unsubscribeAuth = null;
+  unsubscribeAuth = onAuthStateChange(async (nextSession: Session | null) => {
+    const nextUser = nextSession?.user ?? null;
+    const nextProfile = nextUser ? await getMyProfile().catch(() => null) : null;
+    set({ session: nextSession, user: nextUser, profile: nextProfile, loading: false, initialized: true });
+    if (nextUser && shouldEnablePush(nextProfile)) {
+      registerPushToken(nextUser.id).catch(() => null);
+    }
+  });
+}
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   session: null,
@@ -44,21 +66,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const profile = user ? await getMyProfile().catch(() => null) : null;
       set({ session, user, profile, loading: false, initialized: true });
 
-      if (user && ((profile?.push_enabled ?? profile?.notification_enabled) ?? true)) {
+      if (user && shouldEnablePush(profile)) {
         registerPushToken(user.id).catch(() => null);
       }
 
-      if (!unsubscribeAuth) {
-        unsubscribeAuth = onAuthStateChange(async (nextSession) => {
-          const nextUser = nextSession?.user ?? null;
-          const nextProfile = nextUser ? await getMyProfile().catch(() => null) : null;
-          set({ session: nextSession, user: nextUser, profile: nextProfile, loading: false, initialized: true });
-
-          if (nextUser && ((nextProfile?.push_enabled ?? nextProfile?.notification_enabled) ?? true)) {
-            registerPushToken(nextUser.id).catch(() => null);
-          }
-        });
-      }
+      setupAuthListener(set);
     } catch {
       set({ session: null, user: null, profile: null, loading: false, initialized: true });
     }
@@ -77,7 +89,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const profile = user ? await getMyProfile().catch(() => null) : null;
       set({ session, user, profile, loading: false, initialized: true });
 
-      if (user && ((profile?.push_enabled ?? profile?.notification_enabled) ?? true)) {
+      if (user && shouldEnablePush(profile)) {
         registerPushToken(user.id).catch(() => null);
       }
 
@@ -89,13 +101,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   isFirstLogin: () => {
-    const profile = (get() as any).profile;
-    return profile?.is_first_login === true;
+    return get().profile?.is_first_login === true;
   },
 
   clearFirstLogin: async () => {
-    const { updateProfile } = get() as any;
-    await updateProfile({ is_first_login: false }).catch(() => null);
+    await get().updateProfile({ is_first_login: false }).catch(() => null);
   },
 
   signOut: async () => {
@@ -103,6 +113,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (userId) {
       disablePushTokens(userId).catch(() => null);
     }
+
+    // Unsubscribe before signing out to prevent double state update
+    // then immediately re-subscribe so future sign-ins are caught
+    setupAuthListener(set);
+
     await signOutService();
     set({ session: null, user: null, profile: null, loading: false, initialized: true });
   },
@@ -120,5 +135,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         disablePushTokens(userId).catch(() => null);
       }
     }
+  },
+
+  updateAvatar: async (localUri) => {
+    await uploadAvatar(localUri);
+    const profile = await getMyProfile().catch(() => null);
+    set({ profile });
   },
 }));

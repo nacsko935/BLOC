@@ -12,9 +12,10 @@ import { useAuthStore } from "../../state/useAuthStore";
 import { useFeedStore } from "../../state/useFeedStore";
 import { useTheme } from "../../src/core/theme/ThemeProvider";
 import { PostCard } from "../../src/components/PostCard";
+import { Avatar3D, isAvatar3DConfig } from "../../src/components/Avatar3D";
 import { FeedPost } from "../../types/db";
 import { getProgressState, computeLevel, addXP } from "../../src/features/progress/services/progressService";
-import { canChangeAvatar, uploadAvatarWithLock } from "../../lib/services/profileService";
+import { canChangeAvatar, uploadAvatarWithLock, getUserStats } from "../../lib/services/profileService";
 import { getProjects, createProject, addObjective, toggleObjective, deleteProject, getProjectProgress, Project } from "../../lib/services/projectsService";
 
 type Tab = "posts" | "reposts" | "saved" | "projects" | "badges";
@@ -27,15 +28,6 @@ const TABS: { key: Tab; icon: string }[] = [
   { key:"badges",   icon:"trophy-outline" },
 ];
 
-const MODULES = [
-  { id:"m1", name:"SQL avancé",           progress:72, color:"#7B6CFF" },
-  { id:"m2", name:"Réseaux fondamentaux", progress:44, color:"#4DA3FF" },
-  { id:"m3", name:"Algorithmes",          progress:28, color:"#FF8C00" },
-];
-const PROJECTS = [
-  { id:"p1", title:"Révision partiels S2",     tasks:12, done:8 },
-  { id:"p2", title:"Groupe BDD - mini projet", tasks:9,  done:4 },
-];
 
 function mapRole(r?: string|null) {
   const v = (r||"").toLowerCase();
@@ -94,13 +86,10 @@ export default function ProfileTabRoute() {
     getProjects().then(setProjects).catch(() => null);
     // Load follower/following/likes stats
     if (user?.id) {
-      const supabase = (require("../../lib/supabase") as any).getSupabaseOrThrow();
-      Promise.all([
-        supabase.from("follows").select("*",{count:"exact",head:true}).eq("following_id",user.id),
-        supabase.from("follows").select("*",{count:"exact",head:true}).eq("follower_id",user.id),
-      ]).then(([fr, fg]: any[]) => {
-        setFollowersCount(fr.count ?? 0);
-        setFollowingCount(fg.count ?? 0);
+      getUserStats(user.id).then((stats) => {
+        setFollowersCount(stats.followersCount);
+        setFollowingCount(stats.followingCount);
+        setLikesCount(stats.totalLikesReceived);
       }).catch(() => null);
     }
     getProgressState().then(s => {
@@ -116,7 +105,8 @@ export default function ProfileTabRoute() {
   const displayName = profile?.display_name||profile?.full_name||profile?.username||user?.email?.split("@")[0]||"Utilisateur";
   const handle      = profile?.username||user?.email?.split("@")[0]||"utilisateur";
   const role        = mapRole(profile?.role||profile?.account_type||profile?.niveau);
-  const avatarUri   = localAvt||profile?.avatar_url||null;
+  const avatarUri     = localAvt || profile?.avatar_url || null;
+  const avatar3DCfg   = isAvatar3DConfig((profile as any)?.avatar_config) ? (profile as any).avatar_config : null;
   const pctNum      = nextXp>prevXp ? Math.min(100,Math.round(((xp-prevXp)/(nextXp-prevXp))*100)) : 100;
 
   const myPosts = useMemo(()=>{
@@ -129,7 +119,7 @@ export default function ProfileTabRoute() {
   const savedFromFeed = useMemo(()=>posts.filter(p=>p.savedByMe),[posts]);
   const repostedFromFeed = useMemo(()=>posts.filter(p=>p.repostedByMe),[posts]);
 
-  const uploadAvatar = async (uri:string)=>{
+  const uploadAvatar = useCallback(async (uri:string)=>{
     // Check 60-day lock
     const { allowed, daysLeft } = canChangeAvatar(profile?.avatar_changed_at);
     if (profile?.avatar_url && !allowed) {
@@ -148,27 +138,31 @@ export default function ProfileTabRoute() {
       setLocalAvt(null);
     }
     finally{ setUploading(false); }
-  };
-  const pickLib = async()=>{
+  }, [profile?.avatar_url, profile?.avatar_changed_at]);
+
+  const pickLib = useCallback(async()=>{
     const { granted } = await ImagePicker.requestMediaLibraryPermissionsAsync(); if(!granted)return;
-    const r = await ImagePicker.launchImageLibraryAsync({mediaTypes:ImagePicker.MediaType.images,allowsEditing:true,aspect:[1,1],quality:0.85});
+    const r = await ImagePicker.launchImageLibraryAsync({mediaTypes:ImagePicker.MediaTypeOptions.Images,allowsEditing:true,aspect:[1,1],quality:0.85});
     if(!r.canceled&&r.assets[0]) uploadAvatar(r.assets[0].uri);
-  };
-  const pickCam = async()=>{
+  }, [uploadAvatar]);
+
+  const pickCam = useCallback(async()=>{
     const { granted } = await ImagePicker.requestCameraPermissionsAsync(); if(!granted)return;
     const r = await ImagePicker.launchCameraAsync({allowsEditing:true,aspect:[1,1],quality:0.85});
     if(!r.canceled&&r.assets[0]) uploadAvatar(r.assets[0].uri);
-  };
-  const saveProfile = async()=>{
+  }, [uploadAvatar]);
+
+  const saveProfile = useCallback(async()=>{
     try{
       await updateProfile({full_name:fullName.trim()||null,username:username.trim()||null,bio:bio.trim()||null,filiere:filiere.trim()||null});
       setEditVis(false);
     } catch(e:any){ Alert.alert("Erreur",e?.message||"Impossible d'enregistrer."); }
-  };
-  const publishPost = async()=>{
+  }, [fullName, username, bio, filiere, updateProfile]);
+
+  const publishPost = useCallback(async()=>{
     if(!postBody.trim()) return; setPosting(true);
     try{
-      await createPost({title:postTitle.trim()||undefined,content:postBody.trim(),filiere:profile?.filiere||"General"} as any);
+      await createPost({title:postTitle.trim()||undefined,content:postBody.trim(),filiere:profile?.filiere||"General"});
       await refresh(profile?.filiere||undefined);
       const s = await addXP(20,"post");
       const info = computeLevel(s.xp);
@@ -176,7 +170,7 @@ export default function ProfileTabRoute() {
       setPostTitle(""); setPostBody(""); setPostVis(false);
     } catch(e:any){ Alert.alert("Erreur",e?.message||"Impossible de publier."); }
     finally{ setPosting(false); }
-  };
+  }, [postBody, postTitle, createPost, refresh, profile?.filiere]);
 
   const barWidth = barAnim.interpolate({inputRange:[0,1],outputRange:["0%","100%"]});
 
@@ -229,9 +223,11 @@ export default function ProfileTabRoute() {
               <View style={s.avatarOuter}>
                 <LinearGradient colors={["#8B7DFF","#5040E0"]} style={s.avatarArc}/>
                 <View style={[s.avatarInner,{borderColor:c.background}]}>
-                  {avatarUri
-                    ? <Image source={{uri:avatarUri}} style={s.avatarImg} resizeMode="cover"/>
-                    : <Text style={s.avatarInitials}>{displayName.slice(0,2).toUpperCase()}</Text>
+                  {avatar3DCfg
+                    ? <Avatar3D config={avatar3DCfg} size={86} variant="face" />
+                    : avatarUri
+                      ? <Image source={{uri:avatarUri}} style={s.avatarImg} resizeMode="cover"/>
+                      : <Text style={s.avatarInitials}>{displayName.slice(0,2).toUpperCase()}</Text>
                   }
                   {uploading&&<View style={s.avatarOverlay}><ActivityIndicator size="small" color="#FFF"/></View>}
                 </View>
@@ -255,6 +251,10 @@ export default function ProfileTabRoute() {
               <Pressable onPress={()=>setEditVis(true)} style={[s.outlineBtn,{borderColor:c.border}]}>
                 <Text style={{color:c.textPrimary,fontWeight:"700",fontSize:13}}>Modifier</Text>
               </Pressable>
+              <Pressable onPress={()=>router.push("/(modals)/avatar-builder" as any)} style={s.avatarBuilderBtn}>
+                <Ionicons name="sparkles-outline" size={14} color="#EAE6FF" />
+                <Text style={s.avatarBuilderTxt}>Créer mon avatar</Text>
+              </Pressable>
             </View>
           </View>
 
@@ -276,16 +276,25 @@ export default function ProfileTabRoute() {
           <View style={{flexDirection:"row",marginTop:16,borderRadius:16,
             borderWidth:1,borderColor:c.border,backgroundColor:c.card,overflow:"hidden"}}>
             {[
-              {v: followersCount, l:"Abonnés"},
-              {v: followingCount, l:"Suivis"},
-              {v: myPosts.length, l:"Posts"},
-              {v: likesCount,     l:"J'aimes"},
+              {v: followersCount, l:"Abonnés", type:"followers"},
+              {v: followingCount, l:"Suivis",  type:"following"},
+              {v: myPosts.length, l:"Posts",   type:null},
+              {v: likesCount,     l:"J'aimes", type:null},
             ].map((item, i, arr) => (
-              <View key={i} style={{flex:1,alignItems:"center",paddingVertical:12,
-                borderRightWidth:i<arr.length-1?1:0,borderColor:c.border}}>
-                <Text style={{color:c.textPrimary,fontSize:18,fontWeight:"900"}}>{item.v}</Text>
-                <Text style={{color:c.textSecondary,fontSize:10,marginTop:2,fontWeight:"600"}}>{item.l}</Text>
-              </View>
+              item.type && user?.id ? (
+                <Pressable key={i} onPress={() => router.push({ pathname:"/profile/followers", params:{userId:user.id, type:item.type!} })}
+                  style={{flex:1,alignItems:"center",paddingVertical:12,
+                    borderRightWidth:i<arr.length-1?1:0,borderColor:c.border}}>
+                  <Text style={{color:c.textPrimary,fontSize:18,fontWeight:"900"}}>{item.v}</Text>
+                  <Text style={{color:c.textSecondary,fontSize:10,marginTop:2,fontWeight:"600"}}>{item.l}</Text>
+                </Pressable>
+              ) : (
+                <View key={i} style={{flex:1,alignItems:"center",paddingVertical:12,
+                  borderRightWidth:i<arr.length-1?1:0,borderColor:c.border}}>
+                  <Text style={{color:c.textPrimary,fontSize:18,fontWeight:"900"}}>{item.v}</Text>
+                  <Text style={{color:c.textSecondary,fontSize:10,marginTop:2,fontWeight:"600"}}>{item.l}</Text>
+                </View>
+              )
             ))}
           </View>
 
@@ -557,6 +566,19 @@ const s = StyleSheet.create({
   progBtn:{flexDirection:"row",alignItems:"center",gap:8,borderRadius:14,borderWidth:1,borderColor:"#7B6CFF",paddingHorizontal:12,paddingVertical:8,backgroundColor:"rgba(123,108,255,0.10)"},
   progBtnTitle:{color:"#D0C8FF",fontSize:12,fontWeight:"800"},
   progBtnXp:{color:"#9090AA",fontSize:11},
+  avatarBuilderBtn:{
+    minHeight:36,
+    borderRadius:999,
+    paddingHorizontal:12,
+    paddingVertical:8,
+    backgroundColor:"rgba(123,108,255,0.16)",
+    borderWidth:1,
+    borderColor:"rgba(123,108,255,0.38)",
+    flexDirection:"row",
+    alignItems:"center",
+    gap:6,
+  },
+  avatarBuilderTxt:{color:"#EAE6FF",fontWeight:"800",fontSize:12},
   outlineBtn:{minHeight:38,borderRadius:999,borderWidth:1,paddingHorizontal:14,alignItems:"center",justifyContent:"center"},
   displayName:{color:"#FFF",fontSize:24,fontWeight:"900",letterSpacing:-0.4},
   handle:{color:"#9A9AA7",fontSize:14,fontWeight:"700"},

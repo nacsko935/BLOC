@@ -15,6 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { searchUsers } from "../../lib/services/searchService";
 import { ensureDmConversation } from "../../lib/services/messageService";
+import { toggleFollow } from "../../lib/services/profileService";
 import { useAuthStore } from "../../state/useAuthStore";
 
 type FoundUser = {

@@ -74,7 +74,7 @@ export default function CreateModal() {
     try {
       const { granted } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!granted) return;
-      const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaType.images, quality: 0.85 });
+      const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.85 });
       if (!r.canceled && r.assets?.[0]) Alert.alert("Média sélectionné", r.assets[0].uri.split("/").pop() || "");
     } catch {}
   };

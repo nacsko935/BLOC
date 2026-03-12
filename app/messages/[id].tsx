@@ -197,7 +197,7 @@ export default function ChatScreen() {
     try {
       const { granted } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!granted) return;
-      const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaType.images, quality: 0.85 });
+      const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.85 });
       if (!r.canceled && r.assets[0]) {
         const a = r.assets[0];
         addLocal({ id: `img-${Date.now()}`, senderId: user?.id || "me", senderName: "Moi", text: "", type: a.type === "video" ? "video" : "image", mediaUri: a.uri, timestamp: mkTime() });

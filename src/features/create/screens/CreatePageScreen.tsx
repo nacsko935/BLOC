@@ -1,17 +1,13 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
-  Alert, FlatList, Pressable, ScrollView, StyleSheet, Text, View,
+  Alert, Animated, Easing, FlatList, Pressable, ScrollView, StyleSheet, Text, View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../../core/theme/ThemeProvider";
-
-const RECENT_PROJECTS = [
-  { id:"1", title:"QCM Réseaux – Sécurité",  date:"il y a 2j", icon:"📡" },
-  { id:"2", title:"Fiche React Native",       date:"il y a 5j", icon:"📱" },
-];
+import { getProjects, Project } from "../../../../lib/services/projectsService";
 
 const TRACK_TYPES = [
   { id:"post",   label:"Publication", icon:"create-outline",       gradient:["#34C759","#28A745"] as [string,string], route:"/create/index" },
@@ -48,9 +44,40 @@ export function CreatePageScreen() {
   const insets  = useSafeAreaInsets();
   const { c, isDark } = useTheme();
   const [iaOpen, setIaOpen] = useState(true);
+  const [recentProjects, setRecentProjects] = useState<Project[]>([]);
+  const enterOpacity = useRef(new Animated.Value(0)).current;
+  const enterTranslateY = useRef(new Animated.Value(24)).current;
+
+  useEffect(() => {
+    getProjects().then((all) => setRecentProjects(all.slice(0, 3))).catch(() => null);
+  }, []);
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(enterOpacity, {
+        toValue: 1,
+        duration: 220,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(enterTranslateY, {
+        toValue: 0,
+        duration: 260,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [enterOpacity, enterTranslateY]);
 
   return (
-    <View style={{ flex: 1, backgroundColor: c.background }}>
+    <Animated.View
+      style={{
+        flex: 1,
+        backgroundColor: c.background,
+        opacity: enterOpacity,
+        transform: [{ translateY: enterTranslateY }],
+      }}
+    >
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
 
         {/* ── Header ── */}
@@ -87,29 +114,34 @@ export function CreatePageScreen() {
         </View>
 
         {/* ── Projets récents ── */}
-        <View style={{ paddingTop: 20, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: c.border }}>
-          <Text style={[styles.sectionTitle, { color: c.textPrimary, paddingHorizontal: 20 }]}>Projets récents</Text>
-          <FlatList data={RECENT_PROJECTS} horizontal keyExtractor={i => i.id}
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 20, gap: 10, marginTop: 12 }}
-            renderItem={({ item }) => (
-              <Pressable style={({ pressed }) => [{
-                flexDirection:"row", alignItems:"center", gap:12,
-                backgroundColor:c.card, borderRadius:16, padding:12,
-                borderWidth:1, borderColor:c.border, minWidth:200,
-              }, pressed && { opacity:0.85 }]}>
-                <View style={{ width:44,height:44,borderRadius:12,backgroundColor:c.cardAlt,alignItems:"center",justifyContent:"center" }}>
-                  <Text style={{ fontSize:22 }}>{item.icon}</Text>
-                </View>
-                <View style={{ flex:1 }}>
-                  <Text style={{ color:c.textPrimary,fontWeight:"700" }} numberOfLines={1}>{item.title}</Text>
-                  <Text style={{ color:c.textSecondary,fontSize:12,marginTop:2 }}>{item.date}</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={16} color={c.textSecondary}/>
-              </Pressable>
-            )}
-          />
-        </View>
+        {recentProjects.length > 0 && (
+          <View style={{ paddingTop: 20, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: c.border }}>
+            <Text style={[styles.sectionTitle, { color: c.textPrimary, paddingHorizontal: 20 }]}>Projets récents</Text>
+            <FlatList data={recentProjects} horizontal keyExtractor={i => i.id}
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 20, gap: 10, marginTop: 12 }}
+              renderItem={({ item }) => (
+                <Pressable onPress={() => router.push("/(tabs)/profile" as any)}
+                  style={({ pressed }) => [{
+                    flexDirection:"row", alignItems:"center", gap:12,
+                    backgroundColor:c.card, borderRadius:16, padding:12,
+                    borderWidth:1, borderColor:c.border, minWidth:200,
+                  }, pressed && { opacity:0.85 }]}>
+                  <View style={{ width:44,height:44,borderRadius:12,backgroundColor:c.cardAlt,alignItems:"center",justifyContent:"center" }}>
+                    <Text style={{ fontSize:22 }}>{item.icon}</Text>
+                  </View>
+                  <View style={{ flex:1 }}>
+                    <Text style={{ color:c.textPrimary,fontWeight:"700" }} numberOfLines={1}>{item.title}</Text>
+                    <Text style={{ color:c.textSecondary,fontSize:12,marginTop:2 }}>
+                      {item.objectives.filter(o => o.done).length}/{item.objectives.length} objectifs
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color={c.textSecondary}/>
+                </Pressable>
+              )}
+            />
+          </View>
+        )}
 
         {/* ── Type de piste ── */}
         <View style={{ paddingTop:20, borderBottomWidth:1, borderBottomColor:c.border, paddingBottom:20 }}>
@@ -182,7 +214,7 @@ export function CreatePageScreen() {
         </View>
 
       </ScrollView>
-    </View>
+    </Animated.View>
   );
 }
 

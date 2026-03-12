@@ -88,20 +88,25 @@ function SearchModal({ visible, onClose, c }: { visible: boolean; onClose: () =>
   const [users,   setUsers]   = useState<any[]>([]);
   const [posts,   setPosts]   = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error,   setError]   = useState<string | null>(null);
   const [tab,     setTab]     = useState<"users"|"posts">("users");
 
   useEffect(() => {
-    if (visible) { setQuery(""); setUsers([]); setPosts([]); }
+    if (visible) { setQuery(""); setUsers([]); setPosts([]); setError(null); }
   }, [visible]);
 
   useEffect(() => {
-    if (!query.trim()) { setUsers([]); setPosts([]); return; }
+    if (!query.trim()) { setUsers([]); setPosts([]); setError(null); return; }
     const t = setTimeout(async () => {
       setLoading(true);
+      setError(null);
       try {
         const [u, p] = await Promise.all([searchUsers(query), searchPosts(query)]);
         setUsers(u); setPosts(p);
-      } catch {} finally { setLoading(false); }
+      } catch {
+        setUsers([]); setPosts([]);
+        setError("La recherche a échoué. Vérifie ta connexion.");
+      } finally { setLoading(false); }
     }, 300);
     return () => clearTimeout(t);
   }, [query]);
@@ -126,6 +131,12 @@ function SearchModal({ visible, onClose, c }: { visible: boolean; onClose: () =>
             </Pressable>
           ))}
         </View>
+        {error && (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: "rgba(255,80,80,0.10)", borderBottomWidth: 1, borderBottomColor: "rgba(255,80,80,0.20)" }}>
+            <Ionicons name="alert-circle-outline" size={16} color="#FF6B6B" />
+            <Text style={{ color: "#FF6B6B", fontSize: 13, flex: 1 }}>{error}</Text>
+          </View>
+        )}
         <FlatList
           data={tab === "users" ? users : posts}
           keyExtractor={i => i.id}
@@ -169,10 +180,10 @@ function HomeScreenComponent() {
   const router  = useRouter();
   const insets  = useSafeAreaInsets();
   const { c }   = useTheme();
-  const { profile } = useAuthStore();
+  const { profile, user } = useAuthStore();
   const { posts, loading, refreshing, loadingMore, commentsByPost, commentsLoading, refresh, loadMore, toggleLike, toggleSave, toggleRepost, openComments, addComment } = useFeedStore();
 
-  const { unreadCount: notifCount, load: loadNotifs } = useNotificationsStore();
+  const { unreadCount: notifCount, load: loadNotifs, subscribe: subscribeNotifs } = useNotificationsStore();
   const [selectedPost, setSelectedPost] = useState<FeedPost | null>(null);
   const [commentText, setCommentText]   = useState("");
   const [searchOpen, setSearchOpen]     = useState(false);
@@ -180,7 +191,12 @@ function HomeScreenComponent() {
   const filiere = profile?.filiere || undefined;
 
   useEffect(() => { refresh(filiere).catch(() => null); }, [refresh, filiere]);
-  useEffect(() => { loadNotifs(); }, [loadNotifs]);
+  useEffect(() => {
+    if (!user?.id) return;
+    loadNotifs(user.id);
+    const unsub = subscribeNotifs(user.id);
+    return () => { try { unsub?.(); } catch {} };
+  }, [loadNotifs, subscribeNotifs, user?.id]);
   // Rotation automatique des posts bots toutes les 30 secondes
   useEffect(() => {
     if (posts.length > 0) return; // Ne tourner que si pas de vraies données
@@ -201,8 +217,19 @@ function HomeScreenComponent() {
       .catch(() => null);
   }, [refresh, filiere]);
 
-  const onPressTrend    = useCallback((t: TrendItem) => router.push(`/trends/${t.id}` as Href), [router]);
-  const onPressContent  = useCallback((p: FeedPost) => router.push(`/content/${p.id}` as Href), [router]);
+  const onPressTrend       = useCallback((t: TrendItem) => router.push(`/trends/${t.id}` as Href), [router]);
+  const onPressContent     = useCallback((p: FeedPost) => router.push(`/content/${p.id}` as Href), [router]);
+  const onPressAttachment  = useCallback((p: FeedPost) => {
+    router.push({
+      pathname: "/(modals)/doc-viewer" as any,
+      params: {
+        url: p.attachment_url ?? "",
+        title: p.title ?? "Document",
+        type: p.type,
+        postId: p.id,
+      },
+    });
+  }, [router]);
   const onPressComments = useCallback(async (p: FeedPost) => {
     setSelectedPost(p);
     await openComments(p.id).catch(() => null);
@@ -332,6 +359,7 @@ function HomeScreenComponent() {
             onToggleRepost={async id => { try { await toggleRepost(id); } catch {} }}
             onPressComments={onPressComments}
             onPressContent={onPressContent}
+            onPressAttachment={onPressAttachment}
             onPressShare={handleShare}
             onPressMore={p => Alert.alert("Actions", "", [
               { text: "Signaler",  onPress: async () => { try { await reportTarget({ targetType: "post", targetId: p.id, reason: "signalement" }); Alert.alert("Merci", "Signalement envoyé."); } catch {} } },

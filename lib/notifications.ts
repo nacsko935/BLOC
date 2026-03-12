@@ -58,8 +58,7 @@ export async function registerPushToken(userId: string): Promise<void> {
     await supabase
       .from("profiles")
       .update({ push_token: tokenData.data })
-      .eq("id", userId)
-      .catch(() => null);
+      .eq("id", userId);
   } catch {
     // Silencieux dans Expo Go
   }
@@ -72,8 +71,7 @@ export async function disablePushTokens(userId: string): Promise<void> {
     await supabase
       .from("profiles")
       .update({ push_token: null })
-      .eq("id", userId)
-      .catch(() => null);
+      .eq("id", userId);
   } catch {
     // Silencieux
   }

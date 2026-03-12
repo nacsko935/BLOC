@@ -40,11 +40,20 @@ export default function NotificationsScreen() {
     return () => { try { unsub?.(); } catch {} };
   }, [user?.id]);
 
+  const handleTap = (item: AppNotification) => {
+    markRead(item.id);
+    if (item.type === "follow" && item.from_user_id) {
+      router.push(`/profile/${item.from_user_id}` as any);
+    } else if (item.target_id && (item.type === "like" || item.type === "comment" || item.type === "repost" || item.type === "mention")) {
+      router.push(`/content/${item.target_id}` as any);
+    }
+  };
+
   const renderItem = ({ item }: { item: AppNotification }) => {
     const ico = ICONS[item.type] ?? ICONS.mention;
     return (
       <Pressable
-        onPress={() => markRead(item.id)}
+        onPress={() => handleTap(item)}
         style={({ pressed }) => [{
           flexDirection: "row", alignItems: "center", gap: 14,
           paddingHorizontal: 16, paddingVertical: 14,
