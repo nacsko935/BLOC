@@ -318,14 +318,23 @@ function HomeScreenComponent() {
                 <Text style={{ color: c.textPrimary, fontSize: 17, fontWeight: "800" }}>Fil d'actu</Text>
                 <Text style={{ color: c.textSecondary, fontSize: 13 }}>{filiere || "Pour toi"}</Text>
               </View>
-              {/* Barre recherche juste sous "Fil d'actu" */}
-              <Pressable
-                onPress={() => setSearchOpen(true)}
-                style={{ flexDirection: "row", alignItems: "center", backgroundColor: c.cardAlt, borderRadius: 14, borderWidth: 1, borderColor: c.border, paddingHorizontal: 14, height: 42, gap: 10, marginBottom: 14 }}
-              >
-                <Ionicons name="search-outline" size={16} color={c.textSecondary} />
-                <Text style={{ color: c.textSecondary, fontSize: 14, flex: 1 }}>Rechercher utilisateurs, publications…</Text>
-              </Pressable>
+              {/* Barre recherche + bouton "+" à droite */}
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 14 }}>
+                <Pressable
+                  onPress={() => setSearchOpen(true)}
+                  style={{ flex: 1, flexDirection: "row", alignItems: "center", backgroundColor: c.cardAlt, borderRadius: 14, borderWidth: 1, borderColor: c.border, paddingHorizontal: 14, height: 42, gap: 10 }}
+                >
+                  <Ionicons name="search-outline" size={16} color={c.textSecondary} />
+                  <Text style={{ color: c.textSecondary, fontSize: 14, flex: 1 }}>Rechercher…</Text>
+                </Pressable>
+                {/* Bouton "+" publication rapide */}
+                <Pressable
+                  onPress={() => router.push("/create" as any)}
+                  style={{ width: 42, height: 42, borderRadius: 14, backgroundColor: c.accentPurple, alignItems: "center", justifyContent: "center", shadowColor: c.accentPurple, shadowOpacity: 0.5, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 6 }}
+                >
+                  <Ionicons name="add" size={22} color="#FFF" />
+                </Pressable>
+              </View>
             </View>
           </View>
         }

@@ -3,6 +3,7 @@ import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { BlocLogo } from "../../src/components/BlocLogo";
 
 export default function AccountTypeScreen() {
   const router = useRouter();
@@ -16,12 +17,10 @@ export default function AccountTypeScreen() {
       <View style={{ flex: 1, paddingHorizontal: 24, paddingTop: insets.top + 40, paddingBottom: insets.bottom + 24 }}>
 
         {/* Logo */}
-        <View style={{ alignItems: "center", marginBottom: 48 }}>
-          <View style={{ width: 72, height: 72, borderRadius: 22, backgroundColor: "#5B4CFF", alignItems: "center", justifyContent: "center", marginBottom: 20, shadowColor: "#5B4CFF", shadowOpacity: 0.5, shadowRadius: 20, elevation: 10 }}>
-            <Text style={{ color: "#FFF", fontSize: 22, fontWeight: "900", letterSpacing: 0.5 }}>BLOC</Text>
-          </View>
-          <Text style={{ color: "#fff", fontSize: 32, fontWeight: "800", letterSpacing: -0.8, textAlign: "center" }}>Bienvenue sur BLOC</Text>
-          <Text style={{ color: "rgba(255,255,255,0.45)", fontSize: 16, marginTop: 10, textAlign: "center", lineHeight: 22 }}>
+        <View style={{ alignItems: "center", marginBottom: 40 }}>
+          <BlocLogo size={88} variant="dark" />
+          <Text style={{ color: "#fff", fontSize: 32, fontWeight: "800", letterSpacing: -0.8, textAlign: "center", marginTop: 12 }}>BLOC</Text>
+          <Text style={{ color: "rgba(255,255,255,0.45)", fontSize: 16, marginTop: 8, textAlign: "center", lineHeight: 22 }}>
             La plateforme éducative qui connecte étudiants et profs
           </Text>
         </View>

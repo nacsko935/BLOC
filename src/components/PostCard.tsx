@@ -74,9 +74,11 @@ function PostCardInner({ post, onToggleLike, onToggleSave, onPressComments,
   const isOwnPost = currentUserId && post.author_id === currentUserId;
   const initials  = name.slice(0,2).toUpperCase();
 
-  const scaleA  = useRef(new Animated.Value(1)).current;
-  const sparkA  = useRef(new Animated.Value(0)).current;
-  const pressA  = useRef(new Animated.Value(1)).current;
+  const scaleA      = useRef(new Animated.Value(1)).current;
+  const sparkA      = useRef(new Animated.Value(0)).current;
+  const pressA      = useRef(new Animated.Value(1)).current;
+  const doubleTapA  = useRef(new Animated.Value(0)).current;
+  const lastTap     = useRef(0);
 
   const [liked,    setLiked]   = useState(post.likedByMe);
   const [likes,    setLikes]   = useState(post.likesCount);
@@ -84,6 +86,7 @@ function PostCardInner({ post, onToggleLike, onToggleSave, onPressComments,
   const [followed, setFollow]  = useState(false);
   const [reposts,  setReposts] = useState(post.repostsCount ?? 0);
   const [reposted, setReposted]= useState(post.repostedByMe ?? false);
+  const [showHeart, setShowHeart] = useState(false);
 
   const handleLike = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(()=>null);
@@ -100,6 +103,28 @@ function PostCardInner({ post, onToggleLike, onToggleSave, onPressComments,
       ]).start(() => sparkA.setValue(0));
     }
     onToggleLike(post.id);
+  };
+
+  const handleDoubleTap = () => {
+    const now = Date.now();
+    if (now - lastTap.current < 300) {
+      // Double tap — like si pas déjà liké
+      if (!liked) {
+        setLiked(true); setLikes(v => v + 1);
+        onToggleLike(post.id);
+      }
+      setShowHeart(true);
+      doubleTapA.setValue(0);
+      Animated.sequence([
+        Animated.spring(doubleTapA, { toValue: 1, speed: 60, useNativeDriver: true }),
+        Animated.delay(500),
+        Animated.timing(doubleTapA, { toValue: 0, duration: 300, useNativeDriver: true }),
+      ]).start(() => setShowHeart(false));
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => null);
+    } else {
+      onPressContent(post);
+    }
+    lastTap.current = now;
   };
 
   const handleSave = () => {
@@ -130,7 +155,7 @@ function PostCardInner({ post, onToggleLike, onToggleSave, onPressComments,
       <Pressable
         onPressIn={() => Animated.spring(pressA,{toValue:0.975,useNativeDriver:true,speed:100}).start()}
         onPressOut={() => Animated.spring(pressA,{toValue:1,useNativeDriver:true,speed:60}).start()}
-        onPress={() => onPressContent(post)}
+        onPress={handleDoubleTap}
         style={{
           borderRadius: 24,
           overflow: "hidden",
@@ -151,13 +176,26 @@ function PostCardInner({ post, onToggleLike, onToggleSave, onPressComments,
           style={{ height:1 }}
         />
 
+        {/* Double-tap heart overlay */}
+        {showHeart && (
+          <Animated.View style={{
+            position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
+            alignItems: "center", justifyContent: "center",
+            zIndex: 99, pointerEvents: "none",
+            opacity: doubleTapA,
+            transform: [{ scale: doubleTapA.interpolate({ inputRange: [0,0.5,1], outputRange: [0.3, 1.4, 1.1] }) }],
+          }}>
+            <Ionicons name="heart" size={80} color="rgba(255,71,87,0.90)" />
+          </Animated.View>
+        )}
+
         <View style={{ padding:15 }}>
           {/* Header row */}
           <View style={{ flexDirection:"row", gap:11, alignItems:"flex-start" }}>
             {/* Avatar */}
             <Pressable onPress={goProfile} style={{ position:"relative" }}>
               <View style={{
-                width:44, height:44, borderRadius:15, overflow:"hidden",
+                width:44, height:44, borderRadius:22, overflow:"hidden",
                 borderWidth:1.5, borderColor: roleStyle.bg.replace("0.12","0.4"),
               }}>
                 {isAvatar3DConfig((post.author as any)?.avatar_config)

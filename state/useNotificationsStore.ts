@@ -3,7 +3,7 @@ import { getSupabaseOrThrow } from "../lib/supabase";
 
 export type AppNotification = {
   id: string;
-  type: "message" | "follow" | "repost" | "like" | "comment" | "mention";
+  type: "message" | "follow" | "repost" | "like" | "comment" | "mention" | "reaction";
   title: string;
   body: string;
   read: boolean;

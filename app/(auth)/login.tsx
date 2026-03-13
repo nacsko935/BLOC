@@ -8,6 +8,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuthStore } from "../../state/useAuthStore";
+import { BlocLogo } from "../../src/components/BlocLogo";
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -24,12 +25,10 @@ export default function LoginScreen() {
     setLoading(true); setError("");
     try {
       await signIn(email.trim().toLowerCase(), password);
-      // Check AsyncStorage for first-login flag (set during register)
-      const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
-      const userKey = `bloc.welcomed.${email.trim().toLowerCase()}`;
-      const welcomed = await AsyncStorage.getItem(userKey).catch(() => "1");
-      if (!welcomed) {
-        await AsyncStorage.setItem(userKey, "1").catch(() => null);
+      // Source de vérité : is_first_login dans Supabase (plus fiable qu'AsyncStorage)
+      const { useAuthStore: authStore } = await import("../../state/useAuthStore");
+      const profile = authStore.getState().profile;
+      if (profile?.is_first_login === true) {
         router.replace("/welcome");
       } else {
         router.replace("/(tabs)/home");
@@ -52,9 +51,13 @@ export default function LoginScreen() {
             </Pressable>
 
             <View style={s.logoAreaTop}>
+<<<<<<< Updated upstream
               <LinearGradient colors={["#8B7DFF", "#5040E0"]} style={s.logoBox}>
                 <Text style={s.logoLetter}>B</Text>
               </LinearGradient>
+=======
+              <BlocLogo size={80} variant="dark" />
+>>>>>>> Stashed changes
               <View style={s.logoGlow} />
             </View>
           </View>

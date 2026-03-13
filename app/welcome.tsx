@@ -4,6 +4,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { BlocLogo } from "../src/components/BlocLogo";
 
 const { width, height } = Dimensions.get("window");
 
@@ -86,6 +87,11 @@ export default function WelcomeScreen() {
   }, []);
 
   const enter = async () => {
+    // Marquer premier login terminé (Supabase = source de vérité)
+    try {
+      const { useAuthStore } = await import("../state/useAuthStore");
+      await useAuthStore.getState().clearFirstLogin();
+    } catch { /* best-effort */ }
     await AsyncStorage.setItem("bloc.welcomed", "1").catch(() => null);
     router.replace("/(tabs)/home");
   };
@@ -104,11 +110,9 @@ export default function WelcomeScreen() {
       <View style={[styles.orbBlue]} />
 
       <View style={[styles.center, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-        {/* Logo B */}
-        <Animated.View style={{ transform: [{ scale: titleScale }], marginBottom: 12 }}>
-          <LinearGradient colors={["#9D8FFF","#7B6CFF","#5040E0"]} style={styles.logoBox}>
-            <Text style={styles.logoLetter}>B</Text>
-          </LinearGradient>
+        {/* Logo BLOC */}
+        <Animated.View style={{ transform: [{ scale: titleScale }], marginBottom: 12, alignItems: "center" }}>
+          <BlocLogo size={100} variant="dark" />
           <View style={styles.logoGlow} />
         </Animated.View>
 

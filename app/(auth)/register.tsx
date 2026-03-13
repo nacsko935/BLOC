@@ -9,6 +9,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuthStore } from "../../state/useAuthStore";
 import { upsertMyProfile } from "../../lib/services/profileService";
+import { BlocLogo } from "../../src/components/BlocLogo";
 
 type AccountType = "student" | "professor" | "school";
 const TYPES: { value: AccountType; label: string; icon: string; color: string; desc: string }[] = [
@@ -42,7 +43,10 @@ export default function RegisterScreen() {
       await upsertMyProfile({
         full_name: name.trim(),
         username: email.trim().split("@")[0],
+        account_type: type,
+        role: type,
         niveau: type === "professor" ? "Professeur" : type === "school" ? "Etablissement" : "Etudiant",
+        is_first_login: true,
       }).catch(() => null);
       // Mark this email as "first login pending" (cleared after welcome screen)
       const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
@@ -98,7 +102,11 @@ export default function RegisterScreen() {
             <Ionicons name="chevron-back" size={20} color="rgba(255,255,255,0.7)" />
           </Pressable>
 
-          <Text style={s.title}>Rejoins BLOC 🚀</Text>
+          <View style={{ alignItems: "center", marginTop: 8, marginBottom: 4 }}>
+            <BlocLogo size={64} variant="dark" />
+          </View>
+
+          <Text style={s.title}>Rejoins BLOC</Text>
           <Text style={s.subtitle}>Crée ton espace d'apprentissage personnel</Text>
 
           {/* Account type selector */}

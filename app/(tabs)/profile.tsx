@@ -29,10 +29,11 @@ const TABS: { key: Tab; icon: string }[] = [
 ];
 
 
-function mapRole(r?: string|null) {
-  const v = (r||"").toLowerCase();
-  if (v.includes("prof")) return "Professeur";
-  if (v.includes("ecole")||v.includes("school")) return "École";
+function mapRole(accountType?: string|null, role?: string|null, niveau?: string|null) {
+  // Priorité : account_type > role > niveau (rétrocompatibilité)
+  const src = (accountType || role || niveau || "").toLowerCase();
+  if (src === "professor" || src.includes("prof")) return "Professeur";
+  if (src === "school" || src.includes("ecole") || src.includes("school")) return "École";
   return "Étudiant";
 }
 
@@ -104,7 +105,11 @@ export default function ProfileTabRoute() {
 
   const displayName = profile?.display_name||profile?.full_name||profile?.username||user?.email?.split("@")[0]||"Utilisateur";
   const handle      = profile?.username||user?.email?.split("@")[0]||"utilisateur";
+<<<<<<< Updated upstream
   const role        = mapRole(profile?.role||profile?.account_type||profile?.niveau);
+=======
+  const role        = mapRole(profile?.account_type, profile?.role, profile?.niveau);
+>>>>>>> Stashed changes
   const avatarUri     = localAvt || profile?.avatar_url || null;
   const avatar3DCfg   = isAvatar3DConfig((profile as any)?.avatar_config) ? (profile as any).avatar_config : null;
   const pctNum      = nextXp>prevXp ? Math.min(100,Math.round(((xp-prevXp)/(nextXp-prevXp))*100)) : 100;

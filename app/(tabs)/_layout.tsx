@@ -3,6 +3,7 @@ import { Tabs, useRouter } from "expo-router";
 import { Platform, Pressable, View } from "react-native";
 import { BlurView } from "expo-blur";
 import { Ionicons } from "@expo/vector-icons";
+import { BlocLogo } from "../../src/components/BlocLogo";
 import * as Haptics from "expo-haptics";
 import { useAuthStore } from "../../state/useAuthStore";
 import { useTheme } from "../../src/core/theme/ThemeProvider";
@@ -104,24 +105,12 @@ export default function TabsLayout() {
                   shadowRadius: 18,
                   shadowOffset: { width: 0, height: 6 },
                   elevation: 14,
-                  borderWidth: 2.5,
-                  borderColor: isDark ? "#1A1240" : "#E8E4FF",
+                  borderWidth: 2,
+                  borderColor: isDark ? "#2A1F60" : "#C8C0FF",
                   overflow: "hidden",
-                  backgroundColor: "#5B4CFF",
+                  backgroundColor: isDark ? "#0F0A2A" : "#F0EEFF",
                 }}>
-                  <View style={{
-                    position:"absolute", top:0, left:0, right:0, bottom:0,
-                    backgroundColor: "transparent",
-                    borderRadius: 20,
-                    borderTopColor: "rgba(255,255,255,0.22)",
-                    borderTopWidth: 1,
-                  }}/>
-                  <Ionicons name="journal" size={26} color="#FFFFFF" />
-                  <View style={{
-                    position:"absolute", bottom: 8, right: 8,
-                    width: 6, height: 6, borderRadius: 3,
-                    backgroundColor: "rgba(255,255,255,0.5)",
-                  }}/>
+                  <BlocLogo size={44} variant={isDark ? "dark" : "light"} />
                 </View>
               </Pressable>
             ),

@@ -36,10 +36,13 @@ export type ChatMessage = {
   id: string;
   senderId: string;
   senderName: string;
+  senderAvatar?: string | null;
   text: string;
   timestamp: string;
   mediaUrl?: string | null;
   mediaType?: string | null;
+  replyTo?: { id: string; text: string; senderName: string } | null;
+  deleted?: boolean;
 };
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -323,6 +326,27 @@ export async function sendMessage(conversationId: string, content: string): Prom
   if (error) throw error;
 }
 
+export async function sendMessageWithReply(
+  conversationId: string,
+  content: string,
+  replyToId?: string | null,
+  mediaUrl?: string | null,
+  mediaType?: string | null
+): Promise<void> {
+  const supabase = getSupabaseOrThrow();
+  const userId = await requireUserId();
+  const payload: Record<string, any> = {
+    conversation_id: conversationId,
+    sender_id: userId,
+    content: content.trim(),
+  };
+  if (replyToId) payload.reply_to_id = replyToId;
+  if (mediaUrl)  payload.media_url = mediaUrl;
+  if (mediaType) payload.media_type = mediaType;
+  const { error } = await supabase.from("messages").insert(payload);
+  if (error) throw error;
+}
+
 // ── sendGroupMessage ───────────────────────────────────────────────────────────
 
 export async function sendGroupMessage(groupId: string, content: string): Promise<void> {
@@ -339,11 +363,7 @@ export async function sendGroupMessage(groupId: string, content: string): Promis
   }
 }
 
-// ── markConversationRead ──────────────────────────────────────────────────────
-
-export async function markConversationRead(_conversationId: string): Promise<void> {
-  // no-op (pas de champ last_read_at dans ce schéma)
-}
+// markConversationRead — remplacé par la version complète en bas du fichier
 
 // ── ensureDmConversation ──────────────────────────────────────────────────────
 
@@ -431,9 +451,111 @@ export function subscribeToGroup(
       table: "group_messages",
       filter: `group_id=eq.${groupId}`,
     }, () => onMessageInserted())
-    .subscribe((status) => {
-      console.log(`[Realtime] group:${groupId} →`, status);
-    });
+    .subscribe();
 
   return () => { supabase.removeChannel(channel); };
 }
+
+// ── Réactions aux messages ────────────────────────────────────────────────────
+
+export async function addMessageReaction(
+  messageId: string,
+  emoji: string,
+  isGroup = false
+): Promise<void> {
+  const supabase = getSupabaseOrThrow();
+  const userId = await requireUserId();
+  const table = isGroup ? "group_message_reactions" : "message_reactions";
+  const msgCol = isGroup ? "group_message_id" : "message_id";
+  // Upsert: si l'utilisateur a déjà mis cette réaction, on la retire (toggle)
+  const { data: existing } = await supabase
+    .from(table)
+    .select("id")
+    .eq(msgCol, messageId)
+    .eq("user_id", userId)
+    .eq("emoji", emoji)
+    .maybeSingle();
+  if (existing) {
+    await supabase.from(table).delete().eq("id", existing.id);
+  } else {
+    await supabase.from(table).insert({ [msgCol]: messageId, user_id: userId, emoji });
+  }
+}
+
+export async function fetchMessageReactions(
+  messageIds: string[],
+  isGroup = false
+): Promise<Record<string, { emoji: string; count: number; byMe: boolean }[]>> {
+  if (!messageIds.length) return {};
+  const supabase = getSupabaseOrThrow();
+  const userId = await requireUserId();
+  const table = isGroup ? "group_message_reactions" : "message_reactions";
+  const msgCol = isGroup ? "group_message_id" : "message_id";
+  const { data } = await supabase
+    .from(table)
+    .select(`id,${msgCol},emoji,user_id`)
+    .in(msgCol, messageIds);
+
+  const result: Record<string, Record<string, { count: number; byMe: boolean }>> = {};
+  for (const row of (data ?? [])) {
+    const mid = row[msgCol];
+    if (!result[mid]) result[mid] = {};
+    if (!result[mid][row.emoji]) result[mid][row.emoji] = { count: 0, byMe: false };
+    result[mid][row.emoji].count++;
+    if (row.user_id === userId) result[mid][row.emoji].byMe = true;
+  }
+  return Object.fromEntries(
+    Object.entries(result).map(([mid, emojis]) => [
+      mid,
+      Object.entries(emojis).map(([emoji, v]) => ({ emoji, count: v.count, byMe: v.byMe })),
+    ])
+  );
+}
+
+// ── Suppression de message ────────────────────────────────────────────────────
+
+export async function deleteMessage(messageId: string, isGroup = false): Promise<void> {
+  const supabase = getSupabaseOrThrow();
+  const userId = await requireUserId();
+  const table = isGroup ? "group_messages" : "messages";
+  const { error } = await supabase
+    .from(table)
+    .delete()
+    .eq("id", messageId)
+    .eq("sender_id", userId);
+  if (error) throw error;
+}
+
+// ── Statut vu (mark as read) ──────────────────────────────────────────────────
+
+export async function markConversationRead(conversationId: string): Promise<void> {
+  try {
+    const supabase = getSupabaseOrThrow();
+    const userId = await requireUserId();
+    await supabase
+      .from("conversation_reads")
+      .upsert({ conversation_id: conversationId, user_id: userId, read_at: new Date().toISOString() },
+               { onConflict: "conversation_id,user_id" });
+  } catch { /* table may not exist yet — silent fail */ }
+}
+
+export async function getMessageSeenStatus(
+  conversationId: string
+): Promise<{ userId: string; readAt: string }[]> {
+  try {
+    const supabase = getSupabaseOrThrow();
+    const { data } = await supabase
+      .from("conversation_reads")
+      .select("user_id,read_at")
+      .eq("conversation_id", conversationId);
+    return (data ?? []).map((r: any) => ({ userId: r.user_id, readAt: r.read_at }));
+  } catch { return []; }
+}
+
+// ── Type enrichi avec reply + reactions ───────────────────────────────────────
+
+export type EnrichedMessage = ChatMessage & {
+  replyTo?: { id: string; text: string; senderName: string } | null;
+  reactions?: { emoji: string; count: number; byMe: boolean }[];
+  deleted?: boolean;
+};

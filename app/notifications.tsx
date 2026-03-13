@@ -8,12 +8,13 @@ import { useAuthStore } from "../state/useAuthStore";
 import { useNotificationsStore, AppNotification } from "../state/useNotificationsStore";
 
 const ICONS: Record<AppNotification["type"], { name: any; color: string }> = {
-  message: { name: "chatbubble-ellipses", color: "#007AFF" },
-  follow:  { name: "person-add",          color: "#34C759" },
-  repost:  { name: "repeat",              color: "#FF9500" },
-  like:    { name: "heart",               color: "#FF2D55" },
-  comment: { name: "chatbubble",          color: "#AF52DE" },
-  mention: { name: "at",                  color: "#5B4CFF" },
+  message:  { name: "chatbubble-ellipses", color: "#007AFF" },
+  follow:   { name: "person-add",          color: "#34C759" },
+  repost:   { name: "repeat",              color: "#FF9500" },
+  like:     { name: "heart",               color: "#FF2D55" },
+  comment:  { name: "chatbubble",          color: "#AF52DE" },
+  mention:  { name: "at",                  color: "#5B4CFF" },
+  reaction: { name: "happy-outline",       color: "#FFD700" },
 };
 
 function timeAgo(dateStr: string) {
