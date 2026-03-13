@@ -56,6 +56,7 @@ const mockQuiz: QuizQuestion[] = [
 
 export default function QuizModal() {
   const router = useRouter();
+  const { c } = useTheme();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [showExplanation, setShowExplanation] = useState(false);

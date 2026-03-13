@@ -1,5 +1,5 @@
-import { useEffect } from "react";
-import { ActivityIndicator, Platform, View } from "react-native";
+import { useEffect, useRef } from "react";
+import { Animated, Platform, Text, View } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -15,6 +15,7 @@ const qc = new QueryClient();
 // ── AuthBootstrap — timeout de sécurité 4s pour ne jamais rester bloqué
 function AuthBootstrap({ children }: React.PropsWithChildren) {
   const { initAuth, loading } = useAuthStore();
+  const blinkOpacity = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     // Timeout de sécurité : si initAuth prend trop longtemps, on continue quand même
@@ -35,15 +36,40 @@ function AuthBootstrap({ children }: React.PropsWithChildren) {
     optimizeLocalStorage().catch(() => null);
   }, []);
 
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(blinkOpacity, {
+          toValue: 0.3,
+          duration: 520,
+          useNativeDriver: true,
+        }),
+        Animated.timing(blinkOpacity, {
+          toValue: 1,
+          duration: 520,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [blinkOpacity]);
+
   if (loading) {
     return (
       <View style={{ flex: 1, backgroundColor: "#000", alignItems: "center", justifyContent: "center", gap: 16 }}>
-        <ActivityIndicator color="#7B6CFF" size="large" />
-        <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: "#7B6CFF", alignItems: "center", justifyContent: "center" }}>
-          {/* Logo BLOC textuel */}
-          {/* eslint-disable-next-line react-native/no-inline-styles */}
-          <ActivityIndicator color="#FFF" size="small" style={{ opacity: 0 }} />
-        </View>
+        <Animated.Text
+          style={{
+            color: "#FFFFFF",
+            fontSize: 56,
+            fontWeight: "900",
+            letterSpacing: 2,
+            lineHeight: 60,
+            opacity: blinkOpacity,
+          }}
+        >
+          BLOC
+        </Animated.Text>
       </View>
     );
   }
@@ -54,6 +80,20 @@ function AuthBootstrap({ children }: React.PropsWithChildren) {
 // ── NotificationBootstrap — totalement safe, ne bloque JAMAIS
 // expo-notifications crash dans Expo Go sur Android SDK 53
 // On le désactive silencieusement sur les plateformes non supportées
+// Paths allowed to be opened from a push notification payload.
+// This prevents a malicious notification from routing to arbitrary screens.
+const NOTIFICATION_ALLOWED_PREFIXES = [
+  "/messages/",
+  "/notifications",
+  "/content/",
+  "/profile/",
+  "/trends/",
+];
+
+function isSafeNotificationUrl(url: string): boolean {
+  return NOTIFICATION_ALLOWED_PREFIXES.some((prefix) => url.startsWith(prefix));
+}
+
 function NotificationBootstrap({ children }: React.PropsWithChildren) {
   const router = useRouter();
 
@@ -71,7 +111,11 @@ function NotificationBootstrap({ children }: React.PropsWithChildren) {
           const url = data?.url;
           const type = data?.type;
           const conversationId = data?.conversation_id;
-          if (typeof url === "string" && url.length > 0) { router.push(url as never); return; }
+          if (typeof url === "string" && url.length > 0) {
+            // Only route to whitelisted paths to prevent open redirect
+            if (isSafeNotificationUrl(url)) { router.push(url as never); }
+            return;
+          }
           if (!conversationId) return;
           if (type === "dm")    router.push({ pathname: "/messages/[id]",       params: { id: conversationId } });
           if (type === "group") router.push({ pathname: "/messages/group/[id]", params: { id: conversationId } });
@@ -99,11 +143,19 @@ export default function RootLayout() {
               <AuthBootstrap>
                 <NotificationBootstrap>
                   <Stack>
+                    <Stack.Screen name="(auth)"       options={{ headerShown: false }} />
                     <Stack.Screen name="(tabs)"       options={{ headerShown: false }} />
                     <Stack.Screen name="(learning)"   options={{ headerShown: false }} />
                     <Stack.Screen name="(plan)"       options={{ headerShown: false }} />
                     <Stack.Screen name="onboarding"   options={{ headerShown: false }} />
-                    <Stack.Screen name="create" options={{ headerShown: false }} />
+                    <Stack.Screen
+                      name="create"
+                      options={{
+                        headerShown: false,
+                        presentation: "modal",
+                        animation: "slide_from_bottom",
+                      }}
+                    />
                     <Stack.Screen name="notifications" options={{ headerShown: false }} />
                     <Stack.Screen name="progress/index" options={{ headerShown: false }} />
                     <Stack.Screen name="library/index"  options={{ headerShown: false }} />
@@ -121,6 +173,7 @@ export default function RootLayout() {
                     <Stack.Screen name="(modals)/link-school"   options={{ presentation: "modal", title: "Lier une ecole" }} />
                     <Stack.Screen name="(modals)/prof-follow"   options={{ presentation: "modal", title: "Suivre un prof" }} />
                     <Stack.Screen name="(modals)/profile-photo" options={{ presentation: "modal", headerShown: false }} />
+                    <Stack.Screen name="(modals)/avatar-builder" options={{ presentation: "modal", headerShown: false }} />
                     <Stack.Screen name="(modals)/reel-comments" options={{ presentation: "modal", headerShown: false }} />
                     <Stack.Screen name="(modals)/flashcards"    options={{ presentation: "modal", headerShown: false }} />
                     <Stack.Screen name="(modals)/pomodoro"      options={{ presentation: "modal", headerShown: false }} />
@@ -128,6 +181,7 @@ export default function RootLayout() {
                     <Stack.Screen name="(modals)/new-conversation" options={{ presentation: "modal", headerShown: false }} />
                     <Stack.Screen name="(modals)/deadlines"     options={{ presentation: "modal", headerShown: false }} />
                     <Stack.Screen name="(modals)/create-reel"   options={{ presentation: "modal", headerShown: false }} />
+                    <Stack.Screen name="(modals)/doc-viewer"    options={{ presentation: "modal", headerShown: false }} />
                     <Stack.Screen name="note/[id]"    options={{ title: "Note" }} />
                     <Stack.Screen name="task/[id]"    options={{ title: "Tache" }} />
                     <Stack.Screen name="qcm/[id]"     options={{ title: "QCM" }} />

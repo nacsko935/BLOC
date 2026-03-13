@@ -37,6 +37,9 @@ export default function LearningCatalogScreen() {
     <View style={styles.screen}>
       <View style={styles.stickyHeader}>
         <Text style={styles.title}>Catalogue</Text>
+        <Pressable onPress={() => router.push("/(learning)/shop")} style={styles.shopBtn}>
+          <Text style={styles.shopBtnText}>Boutique</Text>
+        </Pressable>
         <TextInput
           value={query}
           onChangeText={setQuery}
@@ -89,6 +92,17 @@ const styles = StyleSheet.create({
     backgroundColor: "#000",
   },
   title: { color: "#FFF", fontSize: 34, fontWeight: "900" },
+  shopBtn: {
+    alignSelf: "flex-start",
+    marginTop: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#2A2D35",
+    backgroundColor: "#121316",
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  shopBtnText: { color: "#E7E2FF", fontSize: 12, fontWeight: "700" },
   searchInput: {
     marginTop: 10,
     borderRadius: 16,

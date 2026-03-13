@@ -46,15 +46,17 @@ export default function LoginScreen() {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
         <ScrollView contentContainerStyle={[s.scroll, { paddingTop: insets.top + 16 }]} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
-          <Pressable onPress={() => router.back()} style={s.backBtn}>
-            <Ionicons name="chevron-back" size={20} color="rgba(255,255,255,0.7)" />
-          </Pressable>
+          <View style={s.topHeader}>
+            <Pressable onPress={() => router.back()} style={[s.backBtn, s.backBtnOverlay]}>
+              <Ionicons name="chevron-back" size={20} color="rgba(255,255,255,0.7)" />
+            </Pressable>
 
-          <View style={s.logoArea}>
-            <LinearGradient colors={["#8B7DFF", "#5040E0"]} style={s.logoBox}>
-              <Text style={s.logoLetter}>B</Text>
-            </LinearGradient>
-            <View style={s.logoGlow} />
+            <View style={s.logoAreaTop}>
+              <LinearGradient colors={["#8B7DFF", "#5040E0"]} style={s.logoBox}>
+                <Text style={s.logoLetter}>B</Text>
+              </LinearGradient>
+              <View style={s.logoGlow} />
+            </View>
           </View>
 
           <Text style={s.title}>Content de te revoir 👋</Text>
@@ -116,8 +118,10 @@ const s = StyleSheet.create({
   scroll: { paddingHorizontal: 24, paddingBottom: 60, flexGrow: 1 },
   orbTR: { position:"absolute", top:-80, right:-80, width:280, height:280, borderRadius:140, backgroundColor:"#7B6CFF", opacity:0.11 },
   orbBL: { position:"absolute", bottom:40, left:-100, width:240, height:240, borderRadius:120, backgroundColor:"#4B3BDF", opacity:0.09 },
+  topHeader: { height: 64, justifyContent: "center", alignItems: "center", marginTop: 4, marginBottom: 24, position: "relative" },
   backBtn: { width:40, height:40, borderRadius:20, backgroundColor:"rgba(255,255,255,0.06)", borderWidth:1, borderColor:"rgba(255,255,255,0.09)", alignItems:"center", justifyContent:"center" },
-  logoArea: { alignItems:"center", marginTop:36, marginBottom:30, position:"relative" },
+  backBtnOverlay: { position: "absolute", left: 0, top: 12 },
+  logoAreaTop: { alignItems:"center", position:"relative" },
   logoBox: { width:76, height:76, borderRadius:24, alignItems:"center", justifyContent:"center", shadowColor:"#7B6CFF", shadowOpacity:0.55, shadowRadius:22, shadowOffset:{width:0,height:0}, elevation:12 },
   logoLetter: { color:"#fff", fontSize:38, fontWeight:"900", letterSpacing:-1 },
   logoGlow: { position:"absolute", width:110, height:110, borderRadius:55, backgroundColor:"#7B6CFF", opacity:0.14, zIndex:-1 },

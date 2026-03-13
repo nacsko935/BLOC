@@ -16,14 +16,19 @@ export default function DebugToolsScreen() {
   }
 
   const simulatePush = async () => {
-    await null?.scheduleNotificationAsync({
-      content: {
-        title: "Test push BLOC",
-        body: "Tap pour ouvrir une conversation",
-        data: { type: "dm", conversation_id: "demo" },
-      },
-      trigger: null,
-    });
+    try {
+      const Notifs = await import("expo-notifications") as any;
+      await Notifs.scheduleNotificationAsync({
+        content: {
+          title: "Test push BLOC",
+          body: "Tap pour ouvrir une conversation",
+          data: { type: "dm", conversation_id: "demo" },
+        },
+        trigger: null,
+      });
+    } catch {
+      // expo-notifications not available in Expo Go
+    }
     Alert.alert("OK", "Push locale simulee");
   };
 

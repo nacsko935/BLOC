@@ -5,6 +5,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { useTheme } from "../core/theme/ThemeProvider";
+import { Avatar3D, isAvatar3DConfig } from "./Avatar3D";
 import { FeedPost } from "../../types/db";
 
 type Props = {
@@ -13,6 +14,7 @@ type Props = {
   onToggleSave: (id: string) => void;
   onPressComments: (post: FeedPost) => void;
   onPressContent: (post: FeedPost) => void;
+  onPressAttachment?: (post: FeedPost) => void;
   onPressMore: (post: FeedPost) => void;
   onPressFollow?: (post: FeedPost) => void;
   onPressShare?: (post: FeedPost) => void;
@@ -61,7 +63,7 @@ function Spark({ anim, x, y, c: col }: any) {
 }
 
 function PostCardInner({ post, onToggleLike, onToggleSave, onPressComments,
-  onPressContent, onPressMore, onPressFollow, onPressShare, onToggleRepost, currentUserId }: Props) {
+  onPressContent, onPressAttachment, onPressMore, onPressFollow, onPressShare, onToggleRepost, currentUserId }: Props) {
   const { c, isDark } = useTheme();
   const router = useRouter();
 
@@ -158,11 +160,13 @@ function PostCardInner({ post, onToggleLike, onToggleSave, onPressComments,
                 width:44, height:44, borderRadius:15, overflow:"hidden",
                 borderWidth:1.5, borderColor: roleStyle.bg.replace("0.12","0.4"),
               }}>
-                {post.author?.avatar_url
-                  ? <Image source={{uri:post.author.avatar_url}} style={{width:44,height:44}}/>
-                  : <LinearGradient colors={avatarColors} style={{flex:1,alignItems:"center",justifyContent:"center"}}>
-                      <Text style={{color:"#fff",fontWeight:"900",fontSize:15}}>{initials}</Text>
-                    </LinearGradient>
+                {isAvatar3DConfig((post.author as any)?.avatar_config)
+                  ? <Avatar3D config={(post.author as any).avatar_config} size={44} variant="face" />
+                  : post.author?.avatar_url
+                    ? <Image source={{uri:post.author.avatar_url}} style={{width:44,height:44}}/>
+                    : <LinearGradient colors={avatarColors} style={{flex:1,alignItems:"center",justifyContent:"center"}}>
+                        <Text style={{color:"#fff",fontWeight:"900",fontSize:15}}>{initials}</Text>
+                      </LinearGradient>
                 }
               </View>
               {!isOwnPost && (
@@ -233,7 +237,7 @@ function PostCardInner({ post, onToggleLike, onToggleSave, onPressComments,
 
           {/* Attachment */}
           {post.type !== "text" && (
-            <Pressable onPress={()=>onPressContent(post)} style={{
+            <Pressable onPress={() => onPressAttachment ? onPressAttachment(post) : onPressContent(post)} style={{
               flexDirection:"row", alignItems:"center", gap:10,
               marginTop:12, borderRadius:14, padding:11,
               backgroundColor: isDark ? "#181836" : "#F4F2FF",

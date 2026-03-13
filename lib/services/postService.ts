@@ -13,7 +13,16 @@ type FetchFeedResult = {
   nextCursor: string | null;
 };
 
-type RawPostRow = Record<string, any>;
+type RawPostRow = {
+  id: string | number;
+  author_id?: string | null;
+  filiere?: string | null;
+  title?: string | null;
+  content?: string | null;
+  type?: string | null;
+  attachment_url?: string | null;
+  created_at?: string;
+};
 
 /**
  * IMPORTANT:
@@ -23,7 +32,7 @@ type RawPostRow = Record<string, any>;
  * - soit RLS bloque la lecture de profiles
  */
 function normalizePostRow(row: RawPostRow): Post | null {
-  const authorId = row.author_id as string | undefined;
+  const authorId = row.author_id ?? undefined;
   if (!authorId) return null;
 
   return {
@@ -96,7 +105,7 @@ export async function fetchFeed(params: FetchFeedParams = {}): Promise<FetchFeed
     (post) => !blockedSet.has(post.author_id) && !hiddenSet.has(post.id)
   );
 
-  // Si la page est filtr�e c�t� mod�ration, on garde le curseur pour charger la suite.
+  // Si la page est filtr�e c�t� mod�ration, on garde le curseur pour charger la suite.
   if (posts.length === 0) {
     return {
       posts: [],
@@ -190,6 +199,40 @@ export async function createPost(input: {
   } as FeedPost;
 }
 
+// Fire-and-forget: send a notification to a post's author (skip if self)
+async function notifyPostAuthor(opts: {
+  postId: string;
+  fromUserId: string;
+  type: "like" | "comment" | "repost";
+}) {
+  try {
+    const supabase = getSupabaseOrThrow();
+    const [postRes, profileRes] = await Promise.all([
+      supabase.from("posts").select("author_id").eq("id", opts.postId).maybeSingle(),
+      supabase.from("profiles").select("display_name,full_name,username").eq("id", opts.fromUserId).maybeSingle(),
+    ]);
+    const authorId = postRes.data?.author_id as string | undefined;
+    if (!authorId || authorId === opts.fromUserId) return; // don't self-notify
+    const p = profileRes.data as { display_name?: string; full_name?: string; username?: string } | null;
+    const name = p?.display_name || p?.full_name || p?.username || "Quelqu'un";
+    const messages = {
+      like:    { title: `${name} a aimé ta publication`, body: "Votre publication a reçu un nouveau like." },
+      comment: { title: `${name} a commenté ta publication`, body: "Quelqu'un a laissé un commentaire." },
+      repost:  { title: `${name} a reposté ta publication`, body: "Votre publication a été partagée." },
+    };
+    const msg = messages[opts.type];
+    await supabase.from("notifications").insert({
+      user_id: authorId,
+      from_user_id: opts.fromUserId,
+      type: opts.type,
+      title: msg.title,
+      body: msg.body,
+      target_id: opts.postId,
+      read: false,
+    });
+  } catch { /* best-effort */ }
+}
+
 export async function toggleLike(postId: string) {
   const userId = await requireUserId();
   const supabase = getSupabaseOrThrow();
@@ -211,6 +254,7 @@ export async function toggleLike(postId: string) {
 
   const { error } = await supabase.from("post_likes").insert({ post_id: postId, user_id: userId });
   if (error) throw error;
+  notifyPostAuthor({ postId, fromUserId: userId, type: "like" });
   return true;
 }
 
@@ -278,7 +322,7 @@ export async function addComment(postId: string, content: string) {
   });
 
   if (error) throw error;
-
+  notifyPostAuthor({ postId, fromUserId: userId, type: "comment" });
   return fetchComments(postId);
 }
 
@@ -293,9 +337,9 @@ export async function toggleRepost(postId: string): Promise<boolean> {
       return false;
     }
     await supabase.from("post_reposts").insert({ post_id: postId, user_id: userId });
+    notifyPostAuthor({ postId, fromUserId: userId, type: "repost" });
     return true;
   } catch {
-    // If table doesn't exist, use local state
     return true;
   }
 }

@@ -109,12 +109,12 @@ export default function PublicProfileScreen() {
           .eq("follower_id", user.id).eq("following_id", targetId);
       } else {
         await supabase.from("follows").insert({ follower_id: user.id, following_id: targetId });
-        // Send notification
-        await supabase.from("notifications").insert({
+        // Send notification (best-effort)
+        supabase.from("notifications").insert({
           user_id: targetId, from_user_id: user.id,
           type: "follow", title: "Nouveau abonné",
           body: "Quelqu'un a commencé à te suivre.", read: false,
-        }).catch(() => null);
+        }).then(() => null, () => null);
       }
     } catch {
       setIsFollowing(prev);
@@ -192,15 +192,15 @@ export default function PublicProfileScreen() {
 
           {/* Stats row — full width */}
           <View style={s.statsRow}>
-            <View style={s.statBox}>
+            <Pressable style={s.statBox} onPress={() => router.push({ pathname: "/profile/followers", params: { userId: targetId, type: "followers" } })}>
               <Text style={s.statVal}>{followersCount}</Text>
               <Text style={s.statLbl}>Abonnés</Text>
-            </View>
+            </Pressable>
             <View style={s.statDivider} />
-            <View style={s.statBox}>
+            <Pressable style={s.statBox} onPress={() => router.push({ pathname: "/profile/followers", params: { userId: targetId, type: "following" } })}>
               <Text style={s.statVal}>{followingCount}</Text>
               <Text style={s.statLbl}>Suivis</Text>
-            </View>
+            </Pressable>
             <View style={s.statDivider} />
             <View style={s.statBox}>
               <Text style={s.statVal}>{posts.length}</Text>

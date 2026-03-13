@@ -7,6 +7,7 @@ export type Profile = {
   filiere: string | null;
   niveau: string | null;
   avatar_url: string | null;
+  avatar_config?: Record<string, unknown> | null;
   role?: string | null;
   account_type?: string | null;
   school_name?: string | null;

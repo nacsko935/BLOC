@@ -104,6 +104,16 @@ export default function LearningHomeScreen() {
             </View>
             <Ionicons name="search-outline" size={20} color="#FFFFFF" />
           </Pressable>
+          <Pressable
+            style={({ pressed }) => [styles.topCtaTertiary, pressed && styles.topCtaPressed]}
+            onPress={() => router.push("/(learning)/shop")}
+          >
+            <View>
+              <Text style={styles.topCtaTitle}>Boutique</Text>
+              <Text style={styles.topCtaSubtitle}>Achats modules premium</Text>
+            </View>
+            <Ionicons name="bag-handle-outline" size={20} color="#FFFFFF" />
+          </Pressable>
         </View>
 
         <SectionContainer>
@@ -271,8 +281,8 @@ export default function LearningHomeScreen() {
         <SectionContainer style={{ marginBottom: 80 }}>
           <Text style={styles.sectionTitle}>Passe en Premium</Text>
           <Text style={styles.creatorText}>Debloque les parcours avances, templates IA et progression illimitee.</Text>
-          <AppButton style={[styles.redBtn, { marginTop: 12 }]} onPress={() => Alert.alert("Premium", "Essai gratuit bientot disponible.")}>
-            Essayer gratuitement
+          <AppButton style={[styles.redBtn, { marginTop: 12 }]} onPress={() => router.push("/(learning)/shop")}>
+            Ouvrir la boutique
           </AppButton>
         </SectionContainer>
       </ScrollView>
@@ -305,6 +315,17 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     borderColor: "#26272C",
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  topCtaTertiary: {
+    backgroundColor: "#101217",
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#2E3340",
     paddingHorizontal: 14,
     paddingVertical: 14,
     flexDirection: "row",

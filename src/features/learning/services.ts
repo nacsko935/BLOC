@@ -1,3 +1,4 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   badgesMock,
   collectionsMock,
@@ -9,8 +10,43 @@ import {
 } from "./mock";
 import { Badge, Collection, Lesson, Module, Progress, ToolPreset, User } from "./types";
 
-let progressState: Progress[] = [...progressMock];
-let badgesState: Badge[] = [...badgesMock];
+const PROGRESS_KEY = "bloc.learning.progress.v1";
+const BADGES_KEY = "bloc.learning.badges.v1";
+
+let _progressState: Progress[] | null = null;
+let _badgesState: Badge[] | null = null;
+
+async function loadProgressState(): Promise<Progress[]> {
+  if (_progressState !== null) return _progressState;
+  try {
+    const raw = await AsyncStorage.getItem(PROGRESS_KEY);
+    _progressState = raw ? (JSON.parse(raw) as Progress[]) : [...progressMock];
+  } catch {
+    _progressState = [...progressMock];
+  }
+  return _progressState;
+}
+
+async function saveProgressState(state: Progress[]): Promise<void> {
+  _progressState = state;
+  await AsyncStorage.setItem(PROGRESS_KEY, JSON.stringify(state)).catch(() => null);
+}
+
+async function loadBadgesState(): Promise<Badge[]> {
+  if (_badgesState !== null) return _badgesState;
+  try {
+    const raw = await AsyncStorage.getItem(BADGES_KEY);
+    _badgesState = raw ? (JSON.parse(raw) as Badge[]) : [...badgesMock];
+  } catch {
+    _badgesState = [...badgesMock];
+  }
+  return _badgesState;
+}
+
+async function saveBadgesState(state: Badge[]): Promise<void> {
+  _badgesState = state;
+  await AsyncStorage.setItem(BADGES_KEY, JSON.stringify(state)).catch(() => null);
+}
 
 export type ListModuleFilters = {
   query?: string;
@@ -69,6 +105,7 @@ export async function listModules(filters: ListModuleFilters = {}): Promise<Modu
   }
 
   if (filters.inProgressOnly) {
+    const progressState = await loadProgressState();
     const inProgressIds = new Set(
       progressState
         .filter((p) => p.userId === userId && p.status === "in_progress")
@@ -103,11 +140,12 @@ export async function getLessons(moduleId: string): Promise<Lesson[]> {
 }
 
 export async function getMyProgress(userId = "demo-user"): Promise<Progress[]> {
-  return progressState.filter((p) => p.userId === userId);
+  const state = await loadProgressState();
+  return state.filter((p) => p.userId === userId);
 }
 
 export async function completeLesson(moduleId: string, lessonId: string, userId = "demo-user"): Promise<Progress> {
-  const lessons = await getLessons(moduleId);
+  const progressState = await loadProgressState();
   const current = progressState.find((p) => p.userId === userId && p.moduleId === moduleId);
   const completed = new Set(current?.completedLessonIds ?? []);
   completed.add(lessonId);
@@ -123,7 +161,8 @@ export async function completeLesson(moduleId: string, lessonId: string, userId 
     status,
   };
 
-  progressState = progressState.filter((p) => !(p.userId === userId && p.moduleId === moduleId)).concat(nextProgress);
+  const nextState = progressState.filter((p) => !(p.userId === userId && p.moduleId === moduleId)).concat(nextProgress);
+  await saveProgressState(nextState);
   return nextProgress;
 }
 
@@ -133,7 +172,9 @@ export async function finishModule(moduleId: string, userId = "demo-user"): Prom
 }> {
   const lessons = await getLessons(moduleId);
   const completedLessonIds = lessons.map((lesson) => lesson.id);
-  progressState = progressState
+
+  const progressState = await loadProgressState();
+  const nextProgressState = progressState
     .filter((p) => !(p.userId === userId && p.moduleId === moduleId))
     .concat({
       userId,
@@ -142,6 +183,7 @@ export async function finishModule(moduleId: string, userId = "demo-user"): Prom
       percent: 100,
       status: "done",
     });
+  await saveProgressState(nextProgressState);
 
   let badgeUnlocked: Badge | undefined;
   const badgeMap: Record<string, string> = {
@@ -152,10 +194,12 @@ export async function finishModule(moduleId: string, userId = "demo-user"): Prom
   };
   const badgeId = badgeMap[moduleId];
   if (badgeId) {
+    const badgesState = await loadBadgesState();
     const badge = badgesState.find((b) => b.id === badgeId);
     if (badge && !badge.unlocked) {
       badge.unlocked = true;
       badgeUnlocked = badge;
+      await saveBadgesState(badgesState);
     }
   }
 
@@ -163,5 +207,5 @@ export async function finishModule(moduleId: string, userId = "demo-user"): Prom
 }
 
 export async function getBadges(): Promise<Badge[]> {
-  return badgesState;
+  return loadBadgesState();
 }

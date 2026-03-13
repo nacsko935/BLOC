@@ -71,14 +71,15 @@ export async function getUserStats(userId: string): Promise<{ followersCount: nu
 }
 
 export function computeLevel(points: number): { level: number; title: string; badge: string; pointsForNextLevel: number } {
+  // Paliers alignés avec progressService.ts (source de vérité)
   const LEVELS = [
-    { min: 0,    title: "Débutant",      badge: "🌱" },
-    { min: 50,   title: "Apprenti",      badge: "📚" },
-    { min: 150,  title: "Studieux",      badge: "⭐" },
-    { min: 300,  title: "Contributeur",  badge: "🔥" },
-    { min: 500,  title: "Expert",        badge: "💎" },
-    { min: 800,  title: "Maître",        badge: "🏆" },
-    { min: 1200, title: "Légende",       badge: "👑" },
+    { min: 0,     title: "Débutant",      badge: "🌱" },
+    { min: 150,   title: "Apprenti",      badge: "📚" },
+    { min: 500,   title: "Studieux",      badge: "⭐" },
+    { min: 1200,  title: "Contributeur",  badge: "🔥" },
+    { min: 2500,  title: "Expert",        badge: "💎" },
+    { min: 5000,  title: "Maître",        badge: "🏆" },
+    { min: 10000, title: "Légende",       badge: "👑" },
   ];
   let level = 1;
   let title = LEVELS[0].title;
@@ -86,7 +87,7 @@ export function computeLevel(points: number): { level: number; title: string; ba
   for (let i = 1; i < LEVELS.length; i++) {
     if (points >= LEVELS[i].min) { level = i + 1; title = LEVELS[i].title; badge = LEVELS[i].badge; }
   }
-  const nextMin = level < LEVELS.length ? LEVELS[level].min : LEVELS[LEVELS.length - 1].min + 1000;
+  const nextMin = level < LEVELS.length ? LEVELS[level].min : LEVELS[LEVELS.length - 1].min + 2000;
   return { level, title, badge, pointsForNextLevel: nextMin };
 }
 
@@ -116,15 +117,20 @@ export async function followUser(targetUserId: string): Promise<void> {
     .from("follows")
     .upsert({ follower_id: myId, following_id: targetUserId }, { onConflict: "follower_id,following_id" });
   if (error) throw error;
-  // Insert notification for the followed user
-  await supabase.from("notifications").insert({
-    user_id: targetUserId,
-    from_user_id: myId,
-    type: "follow",
-    title: "Nouveau abonné",
-    body: "Quelqu'un a commencé à te suivre.",
-    read: false,
-  }).catch(() => null);
+  // Insert notification for the followed user (best-effort)
+  supabase.from("profiles").select("display_name,full_name,username").eq("id", myId).maybeSingle()
+    .then(({ data: p }) => {
+      const name = (p as any)?.display_name || (p as any)?.full_name || (p as any)?.username || "Quelqu'un";
+      return supabase.from("notifications").insert({
+        user_id: targetUserId,
+        from_user_id: myId,
+        type: "follow",
+        title: `${name} te suit maintenant`,
+        body: "Tu as un nouvel abonné !",
+        read: false,
+      });
+    })
+    .then(() => null, () => null);
 }
 
 export async function unfollowUser(targetUserId: string): Promise<void> {
@@ -183,6 +189,38 @@ export async function uploadAvatarWithLock(localUri: string, currentProfile: any
   // Save the timestamp
   await upsertMyProfile({ avatar_changed_at: new Date().toISOString() } as any);
   return url;
+}
+
+// ── Followers / Following lists ────────────────────────────────────────────────
+
+export async function getFollowersList(userId: string): Promise<Profile[]> {
+  try {
+    const supabase = getSupabaseOrThrow();
+    const { data: rows } = await supabase
+      .from("follows")
+      .select("follower_id")
+      .eq("following_id", userId)
+      .limit(200);
+    if (!rows?.length) return [];
+    const ids = rows.map((r: any) => r.follower_id);
+    const { data } = await supabase.from("profiles").select("*").in("id", ids);
+    return (data || []) as Profile[];
+  } catch { return []; }
+}
+
+export async function getFollowingList(userId: string): Promise<Profile[]> {
+  try {
+    const supabase = getSupabaseOrThrow();
+    const { data: rows } = await supabase
+      .from("follows")
+      .select("following_id")
+      .eq("follower_id", userId)
+      .limit(200);
+    if (!rows?.length) return [];
+    const ids = rows.map((r: any) => r.following_id);
+    const { data } = await supabase.from("profiles").select("*").in("id", ids);
+    return (data || []) as Profile[];
+  } catch { return []; }
 }
 
 // ── Get public profile ─────────────────────────────────────────────────────────

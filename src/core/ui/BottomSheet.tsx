@@ -1,6 +1,5 @@
-import { useTheme } from "../theme/ThemeProvider";
-import { ReactNode } from "react";
-import { View, Pressable, Text } from "react-native";
+import { ReactNode, useEffect, useRef } from "react";
+import { Animated, Pressable, Text, View } from "react-native";
 import { theme } from "./theme";
 
 export default function BottomSheet({
@@ -12,20 +11,38 @@ export default function BottomSheet({
   onClose: () => void;
   children: ReactNode;
 }) {
+  const translateY = useRef(new Animated.Value(420)).current;
+  const backdrop = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(backdrop, {
+        toValue: 1,
+        duration: 180,
+        useNativeDriver: true,
+      }),
+      Animated.spring(translateY, {
+        toValue: 0,
+        speed: 18,
+        bounciness: 4,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [backdrop, translateY]);
+
   return (
     <View style={{ flex: 1, justifyContent: "flex-end" }}>
-      <Pressable
-        onPress={onClose}
+      <Animated.View
         style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
+          ...StyleSheetFill,
           backgroundColor: "rgba(0,0,0,0.55)",
+          opacity: backdrop,
         }}
-      />
-      <View
+      >
+        <Pressable onPress={onClose} style={StyleSheetFill} />
+      </Animated.View>
+
+      <Animated.View
         style={{
           backgroundColor: "#0f0f14",
           padding: 16,
@@ -34,6 +51,7 @@ export default function BottomSheet({
           borderWidth: 1,
           borderColor: "rgba(255,255,255,0.08)",
           gap: 12,
+          transform: [{ translateY }],
         }}
       >
         <View style={{ alignItems: "center" }}>
@@ -49,7 +67,16 @@ export default function BottomSheet({
         </View>
         <Text style={{ color: "#ffffff", fontSize: 20, fontWeight: "900" }}>{title}</Text>
         {children}
-      </View>
+      </Animated.View>
     </View>
   );
 }
+
+const StyleSheetFill = {
+  position: "absolute" as const,
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+};
+
