@@ -51,13 +51,7 @@ export default function LoginScreen() {
             </Pressable>
 
             <View style={s.logoAreaTop}>
-<<<<<<< Updated upstream
-              <LinearGradient colors={["#8B7DFF", "#5040E0"]} style={s.logoBox}>
-                <Text style={s.logoLetter}>B</Text>
-              </LinearGradient>
-=======
               <BlocLogo size={80} variant="dark" />
->>>>>>> Stashed changes
               <View style={s.logoGlow} />
             </View>
           </View>

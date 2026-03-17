@@ -105,11 +105,7 @@ export default function ProfileTabRoute() {
 
   const displayName = profile?.display_name||profile?.full_name||profile?.username||user?.email?.split("@")[0]||"Utilisateur";
   const handle      = profile?.username||user?.email?.split("@")[0]||"utilisateur";
-<<<<<<< Updated upstream
-  const role        = mapRole(profile?.role||profile?.account_type||profile?.niveau);
-=======
   const role        = mapRole(profile?.account_type, profile?.role, profile?.niveau);
->>>>>>> Stashed changes
   const avatarUri     = localAvt || profile?.avatar_url || null;
   const avatar3DCfg   = isAvatar3DConfig((profile as any)?.avatar_config) ? (profile as any).avatar_config : null;
   const pctNum      = nextXp>prevXp ? Math.min(100,Math.round(((xp-prevXp)/(nextXp-prevXp))*100)) : 100;

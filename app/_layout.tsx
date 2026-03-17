@@ -1,9 +1,5 @@
 import { useEffect, useRef } from "react";
-<<<<<<< Updated upstream
-import { Animated, Platform, Text, View } from "react-native";
-=======
 import { Animated, Platform, View } from "react-native";
->>>>>>> Stashed changes
 import { Stack, useRouter } from "expo-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -62,26 +58,10 @@ function AuthBootstrap({ children }: React.PropsWithChildren) {
 
   if (loading) {
     return (
-<<<<<<< Updated upstream
-      <View style={{ flex: 1, backgroundColor: "#000", alignItems: "center", justifyContent: "center", gap: 16 }}>
-        <Animated.Text
-          style={{
-            color: "#FFFFFF",
-            fontSize: 56,
-            fontWeight: "900",
-            letterSpacing: 2,
-            lineHeight: 60,
-            opacity: blinkOpacity,
-          }}
-        >
-          BLOC
-        </Animated.Text>
-=======
       <View style={{ flex: 1, backgroundColor: "#000", alignItems: "center", justifyContent: "center", gap: 20 }}>
         <Animated.View style={{ opacity: blinkOpacity }}>
           <BlocLogo size={96} variant="dark" />
         </Animated.View>
->>>>>>> Stashed changes
       </View>
     );
   }
