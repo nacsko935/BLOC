@@ -16,7 +16,6 @@ import { useFeedStore } from "../../../../state/useFeedStore";
 import { useAuthStore } from "../../../../state/useAuthStore";
 import { useNotificationsStore } from "../../../../state/useNotificationsStore";
 import { blockUser, hidePost, reportTarget } from "../../../../lib/services/moderationService";
-import { searchUsers, searchPosts } from "../../../../lib/services/searchService";
 import { seedInitialContentIfEmptyDev } from "../../../../lib/dev/seed";
 
 // Posts de démonstration affichés quand Supabase est vide/non configuré
@@ -82,99 +81,6 @@ function SkeletonPost({ c }: { c: any }) {
   );
 }
 
-/* ── Modal recherche ─────────────────────────────────────────────── */
-function SearchModal({ visible, onClose, c }: { visible: boolean; onClose: () => void; c: any }) {
-  const [query,   setQuery]   = useState("");
-  const [users,   setUsers]   = useState<any[]>([]);
-  const [posts,   setPosts]   = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error,   setError]   = useState<string | null>(null);
-  const [tab,     setTab]     = useState<"users"|"posts">("users");
-
-  useEffect(() => {
-    if (visible) { setQuery(""); setUsers([]); setPosts([]); setError(null); }
-  }, [visible]);
-
-  useEffect(() => {
-    if (!query.trim()) { setUsers([]); setPosts([]); setError(null); return; }
-    const t = setTimeout(async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const [u, p] = await Promise.all([searchUsers(query), searchPosts(query)]);
-        setUsers(u); setPosts(p);
-      } catch {
-        setUsers([]); setPosts([]);
-        setError("La recherche a échoué. Vérifie ta connexion.");
-      } finally { setLoading(false); }
-    }, 300);
-    return () => clearTimeout(t);
-  }, [query]);
-
-  return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: c.background }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingTop: 56, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: c.border }}>
-          <Pressable onPress={onClose} style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: c.cardAlt, alignItems: "center", justifyContent: "center" }}>
-            <Ionicons name="arrow-back" size={20} color={c.textPrimary} />
-          </Pressable>
-          <TextInput autoFocus value={query} onChangeText={setQuery} placeholder="Chercher utilisateurs ou publications…" placeholderTextColor={c.textSecondary}
-            style={{ flex: 1, backgroundColor: c.cardAlt, borderRadius: 14, borderWidth: 1, borderColor: c.border, paddingHorizontal: 14, height: 42, color: c.textPrimary, fontSize: 15 }} autoCapitalize="none" />
-          {loading && <ActivityIndicator color={c.accentPurple} size="small" />}
-        </View>
-        <View style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: c.border }}>
-          {(["users", "posts"] as const).map(t => (
-            <Pressable key={t} onPress={() => setTab(t)} style={{ flex: 1, paddingVertical: 13, alignItems: "center", borderBottomWidth: 2, borderBottomColor: tab === t ? c.accentPurple : "transparent" }}>
-              <Text style={{ color: tab === t ? c.accentPurple : c.textSecondary, fontWeight: "700", fontSize: 14 }}>
-                {t === "users" ? `Utilisateurs (${users.length})` : `Publications (${posts.length})`}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-        {error && (
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: "rgba(255,80,80,0.10)", borderBottomWidth: 1, borderBottomColor: "rgba(255,80,80,0.20)" }}>
-            <Ionicons name="alert-circle-outline" size={16} color="#FF6B6B" />
-            <Text style={{ color: "#FF6B6B", fontSize: 13, flex: 1 }}>{error}</Text>
-          </View>
-        )}
-        <FlatList
-          data={tab === "users" ? users : posts}
-          keyExtractor={i => i.id}
-          contentContainerStyle={{ padding: 16, gap: 10 }}
-          ListEmptyComponent={
-            <View style={{ alignItems: "center", paddingTop: 40, gap: 8 }}>
-              <Ionicons name="search-outline" size={38} color={c.textSecondary} />
-              <Text style={{ color: c.textSecondary, fontSize: 15 }}>
-                {query.trim() ? `Aucun résultat pour "${query}"` : "Commence à taper…"}
-              </Text>
-            </View>
-          }
-          renderItem={({ item }) => tab === "users" ? (
-            <Pressable style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: c.card, borderWidth: 1, borderColor: c.border, borderRadius: 14, padding: 14 }, pressed && { opacity: 0.8 }]}>
-              <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: c.accentPurple + "25", alignItems: "center", justifyContent: "center" }}>
-                {item.avatar_url
-                  ? <Image source={{ uri: item.avatar_url }} style={{ width: 44, height: 44, borderRadius: 22 }} />
-                  : <Text style={{ color: c.accentPurple, fontWeight: "800", fontSize: 16 }}>{(item.full_name || item.username || "?").charAt(0).toUpperCase()}</Text>
-                }
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: c.textPrimary, fontWeight: "700", fontSize: 15 }}>{item.full_name || item.username}</Text>
-                <Text style={{ color: c.textSecondary, fontSize: 12 }}>@{item.username}{item.filiere ? ` · ${item.filiere}` : ""}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={16} color={c.textSecondary} />
-            </Pressable>
-          ) : (
-            <Pressable style={({ pressed }) => [{ backgroundColor: c.card, borderWidth: 1, borderColor: c.border, borderRadius: 14, padding: 14 }, pressed && { opacity: 0.8 }]}>
-              <Text style={{ color: c.textPrimary, fontWeight: "700" }} numberOfLines={1}>{item.title || "Sans titre"}</Text>
-              <Text style={{ color: c.textSecondary, fontSize: 13, marginTop: 4 }} numberOfLines={2}>{item.content}</Text>
-            </Pressable>
-          )}
-        />
-      </View>
-    </Modal>
-  );
-}
-
 /* ── HomeScreen principal ────────────────────────────────────────── */
 function HomeScreenComponent() {
   const router  = useRouter();
@@ -186,7 +92,6 @@ function HomeScreenComponent() {
   const { unreadCount: notifCount, load: loadNotifs, subscribe: subscribeNotifs } = useNotificationsStore();
   const [selectedPost, setSelectedPost] = useState<FeedPost | null>(null);
   const [commentText, setCommentText]   = useState("");
-  const [searchOpen, setSearchOpen]     = useState(false);
   const [visibleDemoPosts, setVisibleDemoPosts] = useState<FeedPost[]>(DEMO_FEED_POSTS.slice(0, 5));
   const filiere = profile?.filiere || undefined;
 
@@ -321,7 +226,7 @@ function HomeScreenComponent() {
               {/* Barre recherche + bouton "+" à droite */}
               <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 14 }}>
                 <Pressable
-                  onPress={() => setSearchOpen(true)}
+                  onPress={() => router.push("/(tabs)/search")}
                   style={{ flex: 1, flexDirection: "row", alignItems: "center", backgroundColor: c.cardAlt, borderRadius: 14, borderWidth: 1, borderColor: c.border, paddingHorizontal: 14, height: 42, gap: 10 }}
                 >
                   <Ionicons name="search-outline" size={16} color={c.textSecondary} />
@@ -379,8 +284,6 @@ function HomeScreenComponent() {
           />
         )}
       />
-
-      <SearchModal visible={searchOpen} onClose={() => setSearchOpen(false)} c={c} />
 
       {/* ── Modal commentaires ── */}
       <Modal visible={!!selectedPost} transparent animationType="slide" onRequestClose={() => setSelectedPost(null)}>
