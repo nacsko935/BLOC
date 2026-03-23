@@ -311,6 +311,7 @@ function HomeScreenComponent() {
         )}
       />
 
+<<<<<<< HEAD
 
       {/* ── Modal publication ── */}
       <Modal visible={showPublish} transparent animationType="slide" onRequestClose={() => { setShowPublish(false); setPublishMedia(null); }}>
@@ -435,6 +436,8 @@ function HomeScreenComponent() {
         </KeyboardAvoidingView>
       </Modal>
 
+=======
+>>>>>>> 4a67d94d6725beadfa84a63fe1826dc5e81260c2
       {/* ── Modal commentaires ── */}
       <Modal visible={!!selectedPost} transparent animationType="slide" onRequestClose={() => setSelectedPost(null)}>
         <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.65)", justifyContent: "flex-end" }}>
