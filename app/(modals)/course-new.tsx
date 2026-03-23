@@ -5,6 +5,7 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../src/core/theme/ThemeProvider";
 import { createCourse } from "../../src/features/courses/coursesRepo";
+import { useAuthStore } from "../../state/useAuthStore";
 
 const SEMESTERS = ["S1", "S2"] as const;
 const ICONS     = ["📚","💻","🌐","🗄️","🧮","🌍","🤖","🎨","📊","🔬","⚡","🎯"];
@@ -19,6 +20,7 @@ export default function CourseNewModal() {
   const insets  = useSafeAreaInsets();
   const { c }   = useTheme();
 
+  const { user } = useAuthStore();
   const [name,      setName]      = useState("");
   const [profName,  setProfName]  = useState("");
   const [profHandle,setProfHandle]= useState("");
@@ -30,7 +32,7 @@ export default function CourseNewModal() {
 
   const handleSave = async () => {
     try {
-      await createCourse({ name, semester, professorName: profName, professorHandle: profHandle, color, icon });
+      await createCourse({ name, semester, professorName: profName, professorHandle: profHandle, color, icon, userId: user?.id });
       router.back();
     } catch (err: any) {
       Alert.alert("Erreur", err?.message || "Impossible de créer le cours.");

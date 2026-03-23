@@ -106,11 +106,11 @@ export default function TabsLayout() {
                   shadowOffset: { width: 0, height: 6 },
                   elevation: 14,
                   borderWidth: 2,
-                  borderColor: isDark ? "#2A1F60" : "#C8C0FF",
+                  borderColor: isDark ? "#5040C8" : "#C8C0FF",
                   overflow: "hidden",
-                  backgroundColor: isDark ? "#0F0A2A" : "#F0EEFF",
+                  backgroundColor: isDark ? "#1A0E3D" : "#EDE9FF",
                 }}>
-                  <BlocLogo size={44} variant={isDark ? "dark" : "light"} />
+                  <BlocLogo size={40} variant={isDark ? "dark" : "light"} />
                 </View>
               </Pressable>
             ),

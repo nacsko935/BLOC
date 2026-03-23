@@ -173,9 +173,9 @@ export async function migrate() {
   }
 
   // Add user_id to courses for data isolation per user
-  try {
-    await db.execAsync(`ALTER TABLE courses ADD COLUMN user_id TEXT;`);
-  } catch {}
+  try { await db.execAsync(`ALTER TABLE courses ADD COLUMN user_id TEXT;`); } catch {}
+  // Recréer l'index si manquant
+  try { await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_courses_user ON courses(user_id);`); } catch {}
 
   // Add user_id to notes for data isolation
   try {
@@ -192,5 +192,26 @@ export async function migrate() {
     await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_courses_user ON courses(user_id);`);
     await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_notes_user ON notes(user_id);`);
     await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_tasks_user ON tasks(user_id);`);
+  } catch {}
+
+  // Table studio_works — travaux générés par l'IA dans le Studio
+  try {
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS studio_works (
+        id TEXT PRIMARY KEY NOT NULL,
+        course_id TEXT NOT NULL,
+        user_id TEXT,
+        type TEXT NOT NULL,
+        title TEXT NOT NULL,
+        content TEXT NOT NULL,
+        source_text TEXT,
+        score INTEGER,
+        total_questions INTEGER,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_studio_works_course ON studio_works(course_id);
+      CREATE INDEX IF NOT EXISTS idx_studio_works_user ON studio_works(user_id);
+    `);
   } catch {}
 }

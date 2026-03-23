@@ -153,6 +153,7 @@ export default function RootLayout() {
                     <Stack.Screen name="library/index"  options={{ headerShown: false }} />
                     <Stack.Screen name="settings"     options={{ headerShown: false }} />
                     <Stack.Screen name="debug-tools"  options={{ headerShown: false }} />
+                    <Stack.Screen name="studio/index" options={{ headerShown: false }} />
                     <Stack.Screen name="(modals)/create"        options={{ presentation: "transparentModal", headerShown: false }} />
                     <Stack.Screen name="(modals)/create-new"    options={{ presentation: "modal", headerShown: false }} />
                     <Stack.Screen name="(modals)/note-new"      options={{ presentation: "modal", title: "Nouvelle note" }} />

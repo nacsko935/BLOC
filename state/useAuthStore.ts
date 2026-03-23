@@ -10,6 +10,7 @@ import {
 import { getMyProfile, upsertMyProfile, uploadAvatar } from "../lib/services/profileService";
 import { Profile } from "../types/db";
 import { registerPushToken, disablePushTokens } from "../lib/notifications";
+import { setPlanUserId, clearPlanCache } from "../src/features/plan/services";
 import { track } from "../lib/services/analyticsService";
 
 type AuthState = {
@@ -65,6 +66,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const user = session?.user ?? null;
       const profile = user ? await getMyProfile().catch(() => null) : null;
       set({ session, user, profile, loading: false, initialized: true });
+      setPlanUserId(user?.id ?? null);
+      if (!user) clearPlanCache();
 
       if (user && shouldEnablePush(profile)) {
         registerPushToken(user.id).catch(() => null);
@@ -88,6 +91,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const user = session?.user ?? null;
       const profile = user ? await getMyProfile().catch(() => null) : null;
       set({ session, user, profile, loading: false, initialized: true });
+      setPlanUserId(user?.id ?? null);
+      if (!user) clearPlanCache();
 
       if (user && shouldEnablePush(profile)) {
         registerPushToken(user.id).catch(() => null);
@@ -119,6 +124,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     setupAuthListener(set);
 
     await signOutService();
+    setPlanUserId(null);
+    clearPlanCache();
     set({ session: null, user: null, profile: null, loading: false, initialized: true });
   },
 

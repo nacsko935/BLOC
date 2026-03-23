@@ -104,13 +104,13 @@ export default function CoursesListScreen() {
             {loading ? "Chargement…" : `${filtered.length} matière${filtered.length>1?"s":""}`}
           </Text>
         </View>
-        <Pressable onPress={()=>router.push("/qcm/generate")}
+        <Pressable onPress={()=>router.push("/studio" as any)}
           style={({ pressed })=>[{ height:42, paddingHorizontal:14, borderRadius:21,
             backgroundColor:"rgba(110,92,255,0.15)", borderWidth:1, borderColor:"#6E5CFF",
             alignItems:"center", justifyContent:"center", flexDirection:"row", gap:6 },
             pressed&&{opacity:0.8}]}>
-          <Ionicons name="flash" size={16} color="#6E5CFF" />
-          <Text style={{ color:"#6E5CFF", fontWeight:"700", fontSize:13 }}>QCM IA</Text>
+          <Ionicons name="sparkles" size={16} color="#6E5CFF" />
+          <Text style={{ color:"#6E5CFF", fontWeight:"700", fontSize:13 }}>Studio IA</Text>
         </Pressable>
         <Pressable onPress={()=>router.push("/(modals)/course-new")}
           style={({ pressed })=>[{ width:42, height:42, borderRadius:21,

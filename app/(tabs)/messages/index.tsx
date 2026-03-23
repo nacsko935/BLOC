@@ -7,6 +7,7 @@ import { useTheme } from "../../../src/core/theme/ThemeProvider";
 import { ConversationItem } from "../../../src/features/messages/v1/components/ConversationItem";
 import { GroupItem } from "../../../src/features/messages/v1/components/GroupItem";
 import { useMessagesStore } from "../../../state/useMessagesStore";
+import { fetchMyInvitations, respondToInvitation, GroupInvitation } from "../../../lib/services/messageService";
 
 type Tab = "discussions" | "groupes";
 
@@ -22,6 +23,22 @@ export default function MessagesTabScreen() {
   const [groupPrivacy, setGroupPrivacy] = useState<"public"|"private">("public");
 
   const { inbox, groups, loading, loadInbox, loadGroups, createGroup, joinGroup } = useMessagesStore();
+  const [myInvites, setMyInvites] = useState<GroupInvitation[]>([]);
+
+  useEffect(() => {
+    fetchMyInvitations().then(setMyInvites).catch(() => null);
+  }, []);
+
+  const handleRespondInvite = async (inv: GroupInvitation, accept: boolean) => {
+    try {
+      const groupId = await respondToInvitation(inv.id, accept);
+      setMyInvites(p => p.filter(i => i.id !== inv.id));
+      if (accept && groupId) {
+        await loadGroups();
+        router.push({ pathname: "/messages/group/[id]", params: { id: groupId } } as any);
+      }
+    } catch (e: any) { Alert.alert("Erreur", e?.message); }
+  };
 
   const fadeAnim  = useRef(new Animated.Value(1)).current;
   const slideAnim = useRef(new Animated.Value(0)).current;
@@ -93,6 +110,43 @@ export default function MessagesTabScreen() {
           </Pressable>
         </View>
       </View>
+
+      {/* Banner invitations en attente */}
+      {myInvites.length > 0 && (
+        <View style={{ marginHorizontal:16, marginTop:10, borderRadius:14, overflow:"hidden",
+          borderWidth:1, borderColor:"#7B6CFF44" }}>
+          {myInvites.map(inv => (
+            <View key={inv.id} style={{ flexDirection:"row", alignItems:"center", gap:10,
+              backgroundColor:"rgba(123,108,255,0.10)", padding:12, borderBottomWidth:1,
+              borderBottomColor:"#7B6CFF22" }}>
+              <View style={{ width:38, height:38, borderRadius:19, backgroundColor:inv.groupColor,
+                alignItems:"center", justifyContent:"center" }}>
+                <Text style={{ color:"#fff", fontWeight:"900" }}>{inv.groupName.charAt(0)}</Text>
+              </View>
+              <View style={{ flex:1 }}>
+                <Text style={{ color:c.textPrimary, fontWeight:"700", fontSize:14 }}>
+                  Invitation : {inv.groupName}
+                </Text>
+                <Text style={{ color:c.textSecondary, fontSize:12 }}>
+                  De {inv.invitedByName} · Groupe privé 🔒
+                </Text>
+              </View>
+              <View style={{ flexDirection:"row", gap:6 }}>
+                <Pressable onPress={() => handleRespondInvite(inv, false)}
+                  style={{ width:32, height:32, borderRadius:16, backgroundColor:"rgba(255,59,48,0.15)",
+                    alignItems:"center", justifyContent:"center" }}>
+                  <Ionicons name="close" size={16} color="#FF3B30" />
+                </Pressable>
+                <Pressable onPress={() => handleRespondInvite(inv, true)}
+                  style={{ width:32, height:32, borderRadius:16, backgroundColor:"rgba(52,199,89,0.15)",
+                    alignItems:"center", justifyContent:"center" }}>
+                  <Ionicons name="checkmark" size={16} color="#34C759" />
+                </Pressable>
+              </View>
+            </View>
+          ))}
+        </View>
+      )}
 
       {/* Tabs */}
       <View style={{ flexDirection:"row", marginHorizontal:20, marginTop:12, marginBottom:4,

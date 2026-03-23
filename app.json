@@ -30,6 +30,6 @@
     "plugins": [
       "expo-router"
     ],
-    "sdkVersion": "54.0.0"
+    "sdkVersion": "55.0.0"
   }
 }

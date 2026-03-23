@@ -1,9 +1,11 @@
 import { Href, useRouter } from "expo-router";
 import { memo, useCallback, useEffect, useState } from "react";
 import {
-  ActivityIndicator, Alert, FlatList, Image, Modal,
-  Pressable, RefreshControl, Share, Text, TextInput, View,
+  ActivityIndicator, Alert, FlatList, Image, KeyboardAvoidingView,
+  Modal, Platform, Pressable, RefreshControl, Share, Text, TextInput, View,
 } from "react-native";
+import * as ImagePicker from "expo-image-picker";
+import * as DocumentPicker from "expo-document-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -16,8 +18,8 @@ import { useFeedStore } from "../../../../state/useFeedStore";
 import { useAuthStore } from "../../../../state/useAuthStore";
 import { useNotificationsStore } from "../../../../state/useNotificationsStore";
 import { blockUser, hidePost, reportTarget } from "../../../../lib/services/moderationService";
-import { searchUsers, searchPosts } from "../../../../lib/services/searchService";
 import { seedInitialContentIfEmptyDev } from "../../../../lib/dev/seed";
+import { createPost } from "../../../../lib/services/postService";
 
 // Posts de démonstration affichés quand Supabase est vide/non configuré
 const DEMO_FEED_POSTS: FeedPost[] = [
@@ -82,99 +84,6 @@ function SkeletonPost({ c }: { c: any }) {
   );
 }
 
-/* ── Modal recherche ─────────────────────────────────────────────── */
-function SearchModal({ visible, onClose, c }: { visible: boolean; onClose: () => void; c: any }) {
-  const [query,   setQuery]   = useState("");
-  const [users,   setUsers]   = useState<any[]>([]);
-  const [posts,   setPosts]   = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error,   setError]   = useState<string | null>(null);
-  const [tab,     setTab]     = useState<"users"|"posts">("users");
-
-  useEffect(() => {
-    if (visible) { setQuery(""); setUsers([]); setPosts([]); setError(null); }
-  }, [visible]);
-
-  useEffect(() => {
-    if (!query.trim()) { setUsers([]); setPosts([]); setError(null); return; }
-    const t = setTimeout(async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const [u, p] = await Promise.all([searchUsers(query), searchPosts(query)]);
-        setUsers(u); setPosts(p);
-      } catch {
-        setUsers([]); setPosts([]);
-        setError("La recherche a échoué. Vérifie ta connexion.");
-      } finally { setLoading(false); }
-    }, 300);
-    return () => clearTimeout(t);
-  }, [query]);
-
-  return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: c.background }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingTop: 56, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: c.border }}>
-          <Pressable onPress={onClose} style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: c.cardAlt, alignItems: "center", justifyContent: "center" }}>
-            <Ionicons name="arrow-back" size={20} color={c.textPrimary} />
-          </Pressable>
-          <TextInput autoFocus value={query} onChangeText={setQuery} placeholder="Chercher utilisateurs ou publications…" placeholderTextColor={c.textSecondary}
-            style={{ flex: 1, backgroundColor: c.cardAlt, borderRadius: 14, borderWidth: 1, borderColor: c.border, paddingHorizontal: 14, height: 42, color: c.textPrimary, fontSize: 15 }} autoCapitalize="none" />
-          {loading && <ActivityIndicator color={c.accentPurple} size="small" />}
-        </View>
-        <View style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: c.border }}>
-          {(["users", "posts"] as const).map(t => (
-            <Pressable key={t} onPress={() => setTab(t)} style={{ flex: 1, paddingVertical: 13, alignItems: "center", borderBottomWidth: 2, borderBottomColor: tab === t ? c.accentPurple : "transparent" }}>
-              <Text style={{ color: tab === t ? c.accentPurple : c.textSecondary, fontWeight: "700", fontSize: 14 }}>
-                {t === "users" ? `Utilisateurs (${users.length})` : `Publications (${posts.length})`}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-        {error && (
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: "rgba(255,80,80,0.10)", borderBottomWidth: 1, borderBottomColor: "rgba(255,80,80,0.20)" }}>
-            <Ionicons name="alert-circle-outline" size={16} color="#FF6B6B" />
-            <Text style={{ color: "#FF6B6B", fontSize: 13, flex: 1 }}>{error}</Text>
-          </View>
-        )}
-        <FlatList
-          data={tab === "users" ? users : posts}
-          keyExtractor={i => i.id}
-          contentContainerStyle={{ padding: 16, gap: 10 }}
-          ListEmptyComponent={
-            <View style={{ alignItems: "center", paddingTop: 40, gap: 8 }}>
-              <Ionicons name="search-outline" size={38} color={c.textSecondary} />
-              <Text style={{ color: c.textSecondary, fontSize: 15 }}>
-                {query.trim() ? `Aucun résultat pour "${query}"` : "Commence à taper…"}
-              </Text>
-            </View>
-          }
-          renderItem={({ item }) => tab === "users" ? (
-            <Pressable style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: c.card, borderWidth: 1, borderColor: c.border, borderRadius: 14, padding: 14 }, pressed && { opacity: 0.8 }]}>
-              <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: c.accentPurple + "25", alignItems: "center", justifyContent: "center" }}>
-                {item.avatar_url
-                  ? <Image source={{ uri: item.avatar_url }} style={{ width: 44, height: 44, borderRadius: 22 }} />
-                  : <Text style={{ color: c.accentPurple, fontWeight: "800", fontSize: 16 }}>{(item.full_name || item.username || "?").charAt(0).toUpperCase()}</Text>
-                }
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: c.textPrimary, fontWeight: "700", fontSize: 15 }}>{item.full_name || item.username}</Text>
-                <Text style={{ color: c.textSecondary, fontSize: 12 }}>@{item.username}{item.filiere ? ` · ${item.filiere}` : ""}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={16} color={c.textSecondary} />
-            </Pressable>
-          ) : (
-            <Pressable style={({ pressed }) => [{ backgroundColor: c.card, borderWidth: 1, borderColor: c.border, borderRadius: 14, padding: 14 }, pressed && { opacity: 0.8 }]}>
-              <Text style={{ color: c.textPrimary, fontWeight: "700" }} numberOfLines={1}>{item.title || "Sans titre"}</Text>
-              <Text style={{ color: c.textSecondary, fontSize: 13, marginTop: 4 }} numberOfLines={2}>{item.content}</Text>
-            </Pressable>
-          )}
-        />
-      </View>
-    </Modal>
-  );
-}
-
 /* ── HomeScreen principal ────────────────────────────────────────── */
 function HomeScreenComponent() {
   const router  = useRouter();
@@ -186,9 +95,31 @@ function HomeScreenComponent() {
   const { unreadCount: notifCount, load: loadNotifs, subscribe: subscribeNotifs } = useNotificationsStore();
   const [selectedPost, setSelectedPost] = useState<FeedPost | null>(null);
   const [commentText, setCommentText]   = useState("");
-  const [searchOpen, setSearchOpen]     = useState(false);
   const [visibleDemoPosts, setVisibleDemoPosts] = useState<FeedPost[]>(DEMO_FEED_POSTS.slice(0, 5));
   const filiere = profile?.filiere || undefined;
+  const [showPublish, setShowPublish] = useState(false);
+  const [publishText, setPublishText]  = useState("");
+  const [publishTitle, setPublishTitle] = useState("");
+  const [publishType, setPublishType]  = useState<"text"|"qcm"|"pdf"|"note">("text");
+  const [publishing, setPublishing]    = useState(false);
+  const [publishMedia, setPublishMedia] = useState<{ uri: string; name: string; type: "image"|"video"|"file" } | null>(null);
+
+  const pickPublishImage = async () => {
+    const { granted } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!granted) { Alert.alert("Permission requise", "Autorise l'accès à ta galerie."); return; }
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images","videos"], quality: 0.85 });
+    if (!result.canceled && result.assets[0]) {
+      const asset = result.assets[0];
+      setPublishMedia({ uri: asset.uri, name: asset.fileName || "media", type: asset.type === "video" ? "video" : "image" });
+    }
+  };
+
+  const pickPublishFile = async () => {
+    const result = await DocumentPicker.getDocumentAsync({ type: "*/*" });
+    if (!result.canceled && result.assets[0]) {
+      setPublishMedia({ uri: result.assets[0].uri, name: result.assets[0].name, type: "file" });
+    }
+  };
 
   useEffect(() => { refresh(filiere).catch(() => null); }, [refresh, filiere]);
   useEffect(() => {
@@ -321,15 +252,15 @@ function HomeScreenComponent() {
               {/* Barre recherche + bouton "+" à droite */}
               <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 14 }}>
                 <Pressable
-                  onPress={() => setSearchOpen(true)}
+                  onPress={() => router.push("/(tabs)/search")}
                   style={{ flex: 1, flexDirection: "row", alignItems: "center", backgroundColor: c.cardAlt, borderRadius: 14, borderWidth: 1, borderColor: c.border, paddingHorizontal: 14, height: 42, gap: 10 }}
                 >
                   <Ionicons name="search-outline" size={16} color={c.textSecondary} />
                   <Text style={{ color: c.textSecondary, fontSize: 14, flex: 1 }}>Rechercher…</Text>
                 </Pressable>
-                {/* Bouton "+" publication rapide */}
+                {/* Bouton "+" publication */}
                 <Pressable
-                  onPress={() => router.push("/create" as any)}
+                  onPress={() => setShowPublish(true)}
                   style={{ width: 42, height: 42, borderRadius: 14, backgroundColor: c.accentPurple, alignItems: "center", justifyContent: "center", shadowColor: c.accentPurple, shadowOpacity: 0.5, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 6 }}
                 >
                   <Ionicons name="add" size={22} color="#FFF" />
@@ -380,7 +311,129 @@ function HomeScreenComponent() {
         )}
       />
 
-      <SearchModal visible={searchOpen} onClose={() => setSearchOpen(false)} c={c} />
+
+      {/* ── Modal publication ── */}
+      <Modal visible={showPublish} transparent animationType="slide" onRequestClose={() => { setShowPublish(false); setPublishMedia(null); }}>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
+          <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.65)", justifyContent: "flex-end" }}>
+            <Pressable style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} onPress={() => { setShowPublish(false); setPublishMedia(null); }} />
+            <View style={{ backgroundColor: c.card, borderTopLeftRadius: 28, borderTopRightRadius: 28, borderWidth: 1, borderColor: c.border, padding: 20, paddingBottom: 34 }}>
+
+              {/* En-tête */}
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                <Text style={{ color: c.textPrimary, fontSize: 18, fontWeight: "900" }}>Nouvelle publication</Text>
+                <Pressable onPress={() => { setShowPublish(false); setPublishMedia(null); }}>
+                  <Ionicons name="close" size={22} color={c.textSecondary} />
+                </Pressable>
+              </View>
+
+              {/* Sélecteur de type */}
+              <View style={{ flexDirection: "row", gap: 8, marginBottom: 14 }}>
+                {([
+                  { id: "text", label: "Texte",   icon: "create-outline" },
+                  { id: "note", label: "Note",    icon: "document-text-outline" },
+                  { id: "qcm",  label: "QCM",     icon: "help-circle-outline" },
+                  { id: "pdf",  label: "Fichier",  icon: "attach-outline" },
+                ] as const).map(t => (
+                  <Pressable key={t.id} onPress={() => setPublishType(t.id)}
+                    style={{ flex: 1, alignItems: "center", paddingVertical: 8, borderRadius: 12, borderWidth: 1.5,
+                      borderColor: publishType === t.id ? c.accentPurple : c.border,
+                      backgroundColor: publishType === t.id ? c.accentPurple + "18" : c.cardAlt }}>
+                    <Ionicons name={t.icon} size={16} color={publishType === t.id ? c.accentPurple : c.textSecondary} />
+                    <Text style={{ color: publishType === t.id ? c.accentPurple : c.textSecondary, fontSize: 11, fontWeight: "700", marginTop: 3 }}>{t.label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              {/* Titre optionnel */}
+              <TextInput value={publishTitle} onChangeText={setPublishTitle}
+                placeholder="Titre (optionnel)"
+                placeholderTextColor={c.textSecondary}
+                style={{ backgroundColor: c.cardAlt, borderWidth: 1, borderColor: c.border, color: c.textPrimary, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, marginBottom: 10 }}
+              />
+
+              {/* Contenu texte */}
+              <TextInput value={publishText} onChangeText={setPublishText}
+                placeholder="Partage quelque chose avec ta communauté…"
+                placeholderTextColor={c.textSecondary} multiline
+                style={{ backgroundColor: c.cardAlt, borderWidth: 1, borderColor: c.border, color: c.textPrimary, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, minHeight: 90, textAlignVertical: "top", marginBottom: 10 }}
+              />
+
+              {/* Aperçu média attaché */}
+              {publishMedia && (
+                <View style={{ backgroundColor: c.cardAlt, borderRadius: 12, borderWidth: 1, borderColor: c.border, padding: 10, flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                  {publishMedia.type === "image"
+                    ? <Image source={{ uri: publishMedia.uri }} style={{ width: 48, height: 48, borderRadius: 8 }} />
+                    : <View style={{ width: 48, height: 48, borderRadius: 8, backgroundColor: c.accentPurple + "22", alignItems: "center", justifyContent: "center" }}>
+                        <Ionicons name={publishMedia.type === "video" ? "videocam" : "document"} size={22} color={c.accentPurple} />
+                      </View>
+                  }
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: c.textPrimary, fontWeight: "700", fontSize: 13 }} numberOfLines={1}>{publishMedia.name}</Text>
+                    <Text style={{ color: c.textSecondary, fontSize: 11, marginTop: 2 }}>{publishMedia.type === "image" ? "Image" : publishMedia.type === "video" ? "Vidéo" : "Fichier"}</Text>
+                  </View>
+                  <Pressable onPress={() => setPublishMedia(null)}>
+                    <Ionicons name="close-circle" size={20} color={c.textSecondary} />
+                  </Pressable>
+                </View>
+              )}
+
+              {/* Boutons media */}
+              <View style={{ flexDirection: "row", gap: 8, marginBottom: 14 }}>
+                <Pressable onPress={pickPublishImage}
+                  style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, backgroundColor: c.cardAlt, borderRadius: 12, borderWidth: 1, borderColor: c.border, paddingVertical: 9 }}>
+                  <Ionicons name="image-outline" size={17} color={c.textSecondary} />
+                  <Text style={{ color: c.textSecondary, fontSize: 13, fontWeight: "600" }}>Photo/Vidéo</Text>
+                </Pressable>
+                <Pressable onPress={pickPublishFile}
+                  style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, backgroundColor: c.cardAlt, borderRadius: 12, borderWidth: 1, borderColor: c.border, paddingVertical: 9 }}>
+                  <Ionicons name="attach-outline" size={17} color={c.textSecondary} />
+                  <Text style={{ color: c.textSecondary, fontSize: 13, fontWeight: "600" }}>Fichier</Text>
+                </Pressable>
+              </View>
+
+              {/* Bouton publier */}
+              <Pressable
+                disabled={!publishText.trim() || publishing}
+                onPress={async () => {
+                  if (!publishText.trim()) return;
+                  setPublishing(true);
+                  try {
+                    // filiere safe : jamais null, jamais vide
+                    const safeFiliere = profile?.filiere?.trim() || "Général";
+                    await createPost({
+                      title: publishTitle.trim() || null,
+                      content: publishText.trim(),
+                      type: publishType,
+                      filiere: safeFiliere,
+                      attachment_url: publishMedia?.uri ?? null,
+                    });
+                    setPublishText(""); setPublishTitle(""); setPublishType("text"); setPublishMedia(null);
+                    setShowPublish(false);
+                    await refresh(filiere);
+                  } catch (e: any) {
+                    const msg = e?.message || "";
+                    if (msg.includes("not-null") || msg.includes("violates")) {
+                      Alert.alert("Erreur", "Champ manquant. Réessaie en complétant ton profil (filière).");
+                    } else {
+                      Alert.alert("Erreur de publication", msg || "Une erreur est survenue.");
+                    }
+                  } finally { setPublishing(false); }
+                }}
+                style={{ height: 50, borderRadius: 16, backgroundColor: !publishText.trim() ? c.cardAlt : c.accentPurple, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8, opacity: publishing ? 0.7 : 1 }}
+              >
+                {publishing
+                  ? <ActivityIndicator color="#fff" />
+                  : <>
+                      <Ionicons name="send" size={18} color={!publishText.trim() ? c.textSecondary : "#fff"} />
+                      <Text style={{ color: !publishText.trim() ? c.textSecondary : "#fff", fontWeight: "800", fontSize: 16 }}>Publier</Text>
+                    </>
+                }
+              </Pressable>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
 
       {/* ── Modal commentaires ── */}
       <Modal visible={!!selectedPost} transparent animationType="slide" onRequestClose={() => setSelectedPost(null)}>

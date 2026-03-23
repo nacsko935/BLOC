@@ -7,12 +7,11 @@ export async function getAllCourses(userId?: string): Promise<Course[]> {
   const db = await getDb();
   let result: any[];
   if (userId) {
+    // Afficher les cours de cet utilisateur OU les cours sans userId (anciens)
     result = await db.getAllAsync<any>(
       `SELECT * FROM courses WHERE user_id = ? OR user_id IS NULL ORDER BY semester, name`,
       [userId]
     );
-    // Filter strictly to only user's own courses
-    result = result.filter((r: any) => r.user_id === userId);
   } else {
     result = await db.getAllAsync<any>(
       `SELECT * FROM courses ORDER BY semester, name`
